@@ -44,31 +44,66 @@ delta.pl <- pl %>%
   summarise(geometry = st_union(geometry)) %>%
   st_transform(., crs = "+proj=utm +zone=10 +datum=NAD83 +ellps=GRS80")
 
+## CalEnviroScreen 
+ces.data <- st_read("data/calenviroscreen40shpf2021shp/CES4 Final Shapefile.shp")
+glimpse(ces.data) # quick visual check of df to make sure it came it well
+
+### Select Delta counties 
+ces.data <- ces.data %>% 
+  filter(County == "Alameda"|County == "Sacramento"| County == "San Joaquin" |County == "Contra Costa"|County == "Solano" |County == "Yolo"|County == "Stanislaus") 
+## Vulnerability index
+### filter out missing data which is marked as "-999" in ces
+ces.data <- ces.data %>%
+  filter(if_all(c(Ozone,PM2_5, DieselPM, Pesticide, 
+                  DrinkWat, Lead, Tox_Rel,Cleanup, 
+                  GWThreat, HazWaste, ImpWatBod, SolWaste),
+                ~ . != -999))
+
+### select vulnerability indicators
+poll_exp <- ces.data %>%
+  dplyr::select(Tract,Ozone,PM2_5, DieselPM, Pesticide, DrinkWat, Lead, Tox_Rel,
+                Cleanup, GWThreat, HazWaste, ImpWatBod, SolWaste) 
+
+### standardize index
+poll_exp.std <- poll_exp %>%
+  mutate_at(~(scale(.) %>% as.vector(.)), .vars = vars(-c(Tract, geometry)))
+glimpse(poll_exp.std)
+
+poll_exp.std <- poll_exp.std %>%
+  mutate(PolInd1 = (Ozone+PM2_5+DieselPM+Pesticide+DrinkWat+Lead+Tox_Rel+
+                      Cleanup+GWThreat+HazWaste+ImpWatBod+SolWaste)/12)
+
+### now it is ready to add to our map!
+
 ## Base map
-osm <- read_osm(delta.boundary, ext = 1.3, type = "apple-iphoto")
+osm <- read_osm(delta.boundary, ext = 1.2, type = "apple-iphoto")
 
 ## put it all together
 tmap_mode("plot")
 set.seed(1)
 case.study.plot <- tm_shape(osm) + 
   tm_rgb() + 
+  tm_shape(poll_exp.std) + 
+  tm_fill("PolInd1", palette = "Reds", alpha = 0.8, legend.show = TRUE, title = "CES Score") +
   tm_shape(delta.boundary) +
-  tm_borders(col = "black", lty = c("solid", "longdash"), lwd = 1)+
+  tm_borders(col = "#35483F", lty = c("solid", "longdash"), lwd = 1)+
+  tm_fill(col = "grey", alpha = 0.4)+
   tm_shape(delta.pl) +
-  tm_fill("#35483F", alpha = 0.9) + 
-  #tm_borders(col = "white", lwd = 1)+
+  tm_borders("black", alpha = 0.9) + 
+  tm_fill(col = "#35483F", alpha = 0.2)+
   tm_text(text = "label", col = "black", scale = .9, fontface = "bold", auto.placement = 6, shadow = TRUE) +
   tm_scale_bar(breaks = c(0, 10, 20), text.size = 0.75, position = c("left", "bottom"), bg.color = "white", bg.alpha = .5) +
   tm_compass(type = "arrow", position = c("right", "top"), bg.color = "white", bg.alpha = .5) +
-  tm_add_legend(type = "fill", labels = "Urban Center", col = "#35483F", title = "Legend") + 
+  #tm_add_legend(type = "border", labels = "Urban Center", col = "#35483F", title = "Legend") + 
   tm_add_legend(type = "line", labels = c("Primary Zone", "Secondary Zone"), lty = c("solid", "dotted")) + 
   tm_legend(position = c("left", "top"), 
             frame = FALSE,
             bg.color="white", 
             bg.alpha = .5)
+
 case.study.plot 
 
-#tmap_save(case.study.plot, "plots/case_study_plot.png", width = 5, height = 7, dpi = 600, units = "in")
+tmap_save(case.study.plot, "plots/case_study_plot.png", width = 5, height = 7, dpi = 600, units = "in")
 
 # B. Raw Data ----
 ## Read in attribute data for each group in the analysis
@@ -76,6 +111,42 @@ nodelist <- read.csv("data/nodelist.csv")
 
 ## Read in edgelist for ego networks
 edgelist <- read.csv("data/edgelist.csv")
+
+## Descriptive Plots ----
+year_plot <- nodelist %>%
+  select(year) %>%
+  group_by(year) %>%
+  count() %>%
+  filter(year > 1969) %>%
+  ggplot(., aes(year, n)) + 
+  geom_bar(stat = "identity", fill = "#657D94") + 
+  xlab("Founding Year") + 
+  ylab("No. of Groups") + 
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 12), axis.text.y = element_text(size = 12), legend.text = element_text(size = 12))
+year_plot
+
+ggsave("plots/year_plot.png", year_plot, width = 7, height = 5, dpi = 600, units = "in")
+
+issue_plot <- nodelist %>%
+  select(ej_issues) %>%
+  separate_rows(ej_issues, sep = ", ") %>%
+  group_by(ej_issues) %>%
+  count() %>%
+  ungroup() %>%
+  ggplot(., aes(reorder(ej_issues, n), n)) + 
+  geom_bar(stat = "identity", fill = "#657D94") + 
+  coord_flip() + 
+  xlab("EJ Issue") + 
+  ylab("No. of Groups") + 
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 12), axis.text.y = element_text(size = 12), legend.text = element_text(size = 12))
+issue_plot
+
+year_issue_plot <- cowplot::plot_grid(year_plot, issue_plot, labels = "auto")
+year_issue_plot
+
+#ggsave("plots/year_issue_plot.png", year_issue_plot, width = 10, height = 5, dpi = 600, units = "in")
 
 # C. Model Dataset ----
 ## 1. Missing Data ----
@@ -331,7 +402,7 @@ network_bounding <- nodelist %>%
   mutate(geo_scale = ifelse(geo_scale_type == "Country" | geo_scale_type == "National" | geo_scale_type == "International", "United States", geo_scale)) %>% # make all international and national equal to the US
   separate_rows(geo_scale, sep = ", ") %>%
   mutate(geo_scale_name = case_when(
-    geo_scale == "G14" ~ "06077002503", # census tract for neighborhood based off home office location
+    geo_scale == "Conway Homes" ~ "06077002503", # census tract for neighborhood based off home office location
     geo_scale == "South Natomas" ~ "06067007001", # census tract for neighborhood based off home office location
     TRUE ~ geo_scale
   ))
@@ -708,7 +779,7 @@ coefs_bd_plot <- coefs_bd %>%
 
 coefs_bd_plot
 
-ggsave("plots/coefs_bd.png", coefs_bd_plot, width = 9, height = 7, units = "in")
+ggsave("plots/coefs_bd.png", coefs_bd_plot, width = 9, height = 7, dpi = 600, units = "in")
 
 ### b. Posterior Prediction Plots --------
 #### Collaborative Membership -----
@@ -745,19 +816,19 @@ plot_collab_memb <- ggplot(collab_memb_predictions,
 plot_collab_memb
 
 #### Alter Collab ----
-alter_collab <- m_full %>% 
+alter_collab <- m_full %>%
   epred_draws(newdata = expand_grid(ego_capacity_n = 0.01, # median
                                     alter_capacity_n = 0.001, # median
                                     c_diff_cat = "match", # most common
-                                    count_ego_collaboratives = 1.00, # median 
+                                    count_ego_collaboratives = 1.00, # median
                                     count_alter_collaboratives = seq(0, 8, by = 1), # median
                                     overlap_collab = 0,
-                                    ego_np_501c3 = 1, # median 
-                                    alter_np_501c3 = 1, # median 
+                                    ego_np_501c3 = 1, # median
+                                    alter_np_501c3 = 1, # median
                                     np_match = "np_homophily", # most common
                                     alter_ej_mission = 2, # most common
-                                    ego_ej_mission = 3, 
-                                    ej_diff_cat = "match", # most common category 
+                                    ego_ej_mission = 3,
+                                    ej_diff_cat = "match", # most common category
                                     count_ego_issues = 3, # median
                                     count_alter_issues = 3, # median
                                     i_match = 1, # median
@@ -767,7 +838,7 @@ alter_collab <- m_full %>%
                                     distance_n = 0.2684),
               re_formula = NA) # this means ALL groups will be included
 
-plot_alter_collab <- ggplot(alter_collab, 
+plot_alter_collab <- ggplot(alter_collab,
                             aes(x = count_alter_collaboratives, y = .epred)) +
   stat_lineribbon() +
   scale_fill_brewer(palette = "Blues") +
@@ -847,7 +918,7 @@ plot_distance_predictions
 prediction_plots <- cowplot::plot_grid(plot_collab_memb, plot_alter_collab, plot_i_match_predictions, plot_distance_predictions, labels = "auto")
 prediction_plots
 
-ggsave("plots/posterior_predictions.png", prediction_plots, width = 8, height = 6, dpi = 600, units = "in")
+ggsave("plots/posterior_predictions.png", prediction_plots, width = 10, height = 6, dpi = 600, units = "in")
 
 ##### Prediction summary -----
 collab_memb_predictions %>% group_by(factor(overlap_collab)) %>% summarize(mean(.epred))
@@ -972,50 +1043,42 @@ ej1 %>% group_by(factor(ego_ej_mission)) %>% summarize(mean(.epred))
 ej2 %>% group_by(factor(alter_ej_mission)) %>% summarize(mean(.epred))
 ej3 %>% group_by(factor(ej_diff_cat)) %>% summarize(mean(.epred))
 
-### Group Effects
-collab_memb_predictions_re <- m_full %>% 
-  epred_draws(newdata = expand_grid(ego_capacity_n = 0.01, # median
-                                    alter_capacity_n = 0.001, # median
-                                    c_diff_cat = "match", # most common
-                                    count_ego_collaboratives = 1.00, # median 
-                                    count_alter_collaboratives = 0, # median
-                                    overlap_collab = seq(0, 3, by = 1),
-                                    ego_np_501c3 = 1, # median 
-                                    alter_np_501c3 = 1, # median 
-                                    np_match = "np_homophily", # most common
-                                    alter_ej_mission = 2, # most common
-                                    ego_ej_mission = 3, 
-                                    ej_diff_cat = "match", # most common category 
-                                    count_ego_issues = 3, # median
-                                    count_alter_issues = 3, # median
-                                    i_match = 1, # median
-                                    ego_local = "local", # most common
-                                    alter_local = "local", # most common
-                                    geo_diff_cat = "local_match", # most common
-                                    distance_n = 0.2684, 
-                                    alter = unique(m_df$alter), 
-                                    ego = unique(m_df$ego)), 
-              re_formula = NULL, allow_new_levels = TRUE) # does not include group effects 
-
-plot_collab_memb_re <- 
-  ggplot(collab_memb_predictions_re, 
-         aes(x = overlap_collab, y = .epred)) +
-  stat_lineribbon() +
-  scale_fill_brewer(palette = "Blues") +
-  labs(x = "Overlapping Collaborative Membership", y = "Predicted Collaborative Tie Probability",
-       fill = "Credible interval") +
-  theme_minimal() +
-  theme(legend.position = "none")
-
-plot_collab_memb_re
-
 ## 7. VPC Table ----
-sjPlot::tab_model(m_ego, m_ego_alter, m_full_ego, m_full, dv.labels = c("VPC - Ego", "VPC - Ego + Alter", "Full Model - Ego", "Full Model - Ego + Alter"), file = "docs/vpc_full_model_comp_table.doc")
+sjPlot::tab_model(m_ego, m_ego_alter, m_full_ego, m_full, dv.labels = c("VPC - Ego", "VPC - Ego + Alter", "Full Model - Ego", "Full Model - Ego + Alter"), file = "outputs/vpc_full_model_comp_table.doc")
 
 # D. Supplemental Information ----
 ## 1. Additional Descriptive Information ----
 ### a. Alter and Ego Degree Plot ----
+ego_dist <- m_df %>%
+  filter(dv == 1) %>%
+  group_by(ego) %>%
+  summarize(degree = n()) %>%
+  ungroup() %>%
+  group_by(degree) %>%
+  count() %>%
+  ggplot(., aes(x = as.factor(degree), y = n)) +
+  geom_bar(stat = "identity", fill = "#726186") + 
+  xlab("Ego Degree Distribution") + 
+  ylab("Frequency") + 
+  theme_minimal()
+ego_dist
 
+ggsave("plots/ego_dist.png", ego_dist, width = 6, height = 4, dpi = 600, units = "in")
+
+alter_dist <- m_df %>%
+  filter(dv == 1) %>%
+  group_by(alter) %>%
+  summarize(degree = n()) %>%
+  ungroup() %>%
+  group_by(degree) %>%
+  count() %>%
+  ggplot(., aes(x = as.factor(degree), y = n)) +
+  geom_bar(stat = "identity", fill = "#726186") + 
+  xlab("Alter Degree Distribution") + 
+  ylab("Frequency") + 
+  theme_minimal()
+alter_dist
+ggsave("plots/alter_dist.png", alter_dist, width = 6, height = 4, dpi = 600, units = "in")
 ## 2. Model Results Comparison ----
 ### a. Plot ----
 coefs_re <- gather_coefs(m_re, "Resource Exchange")
@@ -1029,7 +1092,7 @@ combined_coefs_plot
 ggsave("plots/coefs_all_models.png", combined_coefs_plot, width = 9, height = 10, dpi = 600, units = "in")
 
 ### b. Coefficient Table ----
-sjPlot::tab_model(m_re, m_bd, m_full, dv.labels = c("Resource Exchange", "Boundary Definition", "Full Model"), file = "docs/paper_model_table.doc")
+sjPlot::tab_model(m_re, m_bd, m_full, dv.labels = c("Resource Exchange", "Boundary Definition", "Full Model"), file = "outputs/paper_model_table.doc")
 
 ### c. Loo Comparison Table ----
 loo(m_re)
@@ -1037,8 +1100,8 @@ loo(m_bd)
 loo(m_full)
 
 ### d. No ECJW Model Plot ----
-coefs_full <- gather_coefs(m_full_c, "Full Model")
-coefs_full_no_ejcw <- gather_coefs(m_full_c_subset, "Full Model without EJCW")
+coefs_full <- gather_coefs(m_full, "Full Model")
+coefs_full_no_ejcw <- gather_coefs(m_full_subset, "Full Model without EJCW")
 
 combined_coefs_plot2 <- combine_coefs_plot2(coefs_full, coefs_full_no_ejcw)
 
@@ -1059,3 +1122,14 @@ ggsave("plots/trace_plots.png", trace, width = 6, height = 4, dpi = 600, units =
 loo(m_full_c)
 loo(m_full_s)
 loo(m_full)
+
+coefs_c <- gather_coefs(m_full_c, "Cauchy")
+coefs_s<- gather_coefs(m_full_s, "Horseshoe")
+coefs_full <- gather_coefs(m_full, "Normal")
+
+combined_coefs_plot <- combine_coefs_plot3(coefs_c, coefs_s, coefs_full)
+
+combined_coefs_plot
+
+ggsave("plots/coefs_all_priors.png", combined_coefs_plot, width = 9, height = 10, dpi = 600, units = "in")
+

@@ -6,8 +6,6 @@ The folders contain all replication files for the paper: Pozzi, Tara, Lubell, Ma
 
 ## Setup
 
-### 
-
 Operating system
 
 The analysis was performed on a macOS Monterey 12.0.1 using R-Version 4.4.0.

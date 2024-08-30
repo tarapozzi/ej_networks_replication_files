@@ -5,8 +5,11 @@ library(tigris) #census data
 library(tidybayes) # result plots
 library(tmap) # map
 library(tmaptools) #add basemap
-library(brms)
-library(tidybayes)
+library(network)
+library(ggraph) # network plot
+library(sna) # network analysis
+library(brms) # modeling package
+library(tidybayes) # model results interpretation
 
 # A. Case Study ----
 ## Legal Delta 
@@ -113,15 +116,20 @@ nodelist <- read.csv("data/nodelist.csv")
 edgelist <- read.csv("data/edgelist.csv")
 
 ## Descriptive Plots ----
+collaborative_list <- data.frame(org = c("California Environmental Justice Alliance", "ClimatePlan", "Capital Region Climate Readiness Collaborative", "Edge Collaborative", "Environmental Council of Sacramento", "Environmental Justice Coalition for Water", "RISE Stockton Coalition", "Delta Adapts", "Regional Water Forum", "San Joaquin Regional Climate Collaborative", "Yolo County Climate Action Commission", "Sacramento Environmental Justice Collaborative Governance Committee", "Stockton AB 617 Steering Committee", "Stockton Rising", "San Joaquin Healthy Neighborhoods Collaborative"), year = c(2001, 2007, 2013, 2021, 1971, 1999, 2018, 2018, 2000, 2022, 2020, 2018, 2019, 2022, 2020), Type = "Collaborative")
+
 year_plot <- nodelist %>%
-  select(year) %>%
-  group_by(year) %>%
+  mutate(Type = "EJ Group") %>%
+  select(year, Type) %>%
+  bind_rows(., select(collaborative_list, year, Type)) %>%
+  group_by(year, Type) %>%
   count() %>%
   filter(year > 1969) %>%
   ggplot(., aes(year, n)) + 
-  geom_bar(stat = "identity", fill = "#657D94") + 
+  geom_bar(stat = "identity", aes(fill = Type), position = "stack") + 
+  scale_fill_manual(breaks = c("EJ Group", "Collaborative"), values = c("#657D94", "brown4")) + 
   xlab("Founding Year") + 
-  ylab("No. of Groups") + 
+  ylab("Count") + 
   theme_bw() +
   theme(axis.text.x = element_text(size = 12), axis.text.y = element_text(size = 12), legend.text = element_text(size = 12))
 year_plot
@@ -322,7 +330,7 @@ d <-  d %>%
          c_diff_cat = ifelse(c_diff_n > 0, "higher", ifelse(c_diff_n == 0, "match", "lower"))) # capacity different (categorical)
 
 ### Identity ----
-#### EJ in mission ----
+#### EJ commitment ----
 ## Rescale EJ in mission ordered categories to be numerical
 d <- d %>%
   mutate(alter_ej_mission = case_when(
@@ -338,7 +346,7 @@ d <- d %>%
     ego_ej_mission == "Central" ~ 3
   )) %>%
   mutate(ej_diff = alter_ej_mission - ego_ej_mission, # ej difference (numerical)
-         ej_diff_cat = ifelse(ej_diff > 0, "higher", ifelse(ej_diff == 0, "match", "lower"))) # ej difference (categorical) e.g., higher: alter has higher EJ commitment than alter
+         ej_diff_cat = ifelse(ej_diff > 0, "higher", ifelse(ej_diff == 0, "match", "lower"))) # ej difference (categorical) e.g., higher: alter has higher EJ commitment than ego
 
 #### EJ issues ----
 ## Calculate number of overlapping issues in each ego-alter pair
@@ -485,6 +493,7 @@ m_df <- read.csv("outputs/model_dataset.csv") %>%
   select(-X, -distance) # remove ID and distance
 
 ## Descriptive Results ----
+## Table ----
 ## Code for comparison table of independent variables across egos, alters, potential ego-alter ties, and observed ego-alter ties
 ## 1. Egos ----
 ego_summary <- m_df %>%
@@ -594,6 +603,60 @@ m_df %>%
   group_by(geo_diff_cat) %>%
   count()
 
+## Network figure ----
+# Replace anonymous IDs with names for now
+anonymous_key <- read.csv("data/anonymous_key.csv")
+edgelist_names <- edgelist %>%
+  left_join(., anonymous_key, by = c("ego" = "ID")) %>%
+  select(-ego) %>%
+  rename(ego = org) %>%
+  left_join(., anonymous_key, by = c("alter" = "ID")) %>%
+  select(-alter) %>%
+  rename(alter = org)
+
+nodelist_names <- anonymous_key %>% select(org)
+
+# Create network object
+net <- network(x = edgelist_names, 
+               vertices = nodelist_names, 
+               bipartite = F,  
+               directed = T, 
+               isolates = F)
+# Attributes
+net %v% 'degree' <- sna::degree(net)
+
+egos <- edgelist_names %>% select(ego) %>% distinct() %>% pull() 
+alters <- edgelist_names %>% select(alter) %>% distinct() %>% pull()
+both <- intersect(egos, alters)
+
+net %v% 'position' <- ifelse(net %v% 'vertex.names' %in% egos, 1, 2)
+
+net %v% 'labels' <- ifelse(net %v% 'vertex.names' %in% egos & net %v% 'position' == 1, net %v%  'vertex.names', '')
+
+alter_overlaps <- edgelist_names %>% select(alter) %>% group_by(alter) %>% filter(n() > 1) %>% distinct() %>% pull() # 17 overlapping alters 
+
+net %v% 'overlaps' <- ifelse(net %v% 'vertex.names' %in% both, # 9 overlapping 
+                             1, 
+                             ifelse(net %v% 'vertex.names' %in% alter_overlaps, 2, 0))  
+
+
+# Plot
+set.seed(1)
+net_plot <- ggraph(net, layout = 'fr') +
+  geom_edge_link(alpha = 0.5, color = "gray70", show.legend = FALSE) +
+  geom_node_point(aes(size = as.numeric(degree), color = as.character(overlaps), shape = as.character(position)), alpha = .9) +
+  scale_shape_manual(breaks = c(1, 2), values = c(17, 18), labels = c("Ego", "Alter")) +
+  scale_color_manual(breaks = c(0,1,2), values = c("#CBC9E2", "#00BFC4", "#54278F"), labels = c("No Overlaps", "Alter-Alter Overlap", "Ego-Overlap")) +
+  theme_void() +
+  geom_node_text(aes(label = labels, size = as.numeric(degree)), repel = T, max.overlaps = Inf) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 14)) + 
+  guides(size = guide_legend(title = "Degree"), shape = guide_legend(title = "Position"), color = guide_legend(title = "Shared Alter")) 
+
+net_plot
+
+#ggsave("plots/full_network.png", net_plot, width = 12, height = 9, units = "in")
+
+
 ## Inferential Results -----
 ## 1. Correlation ----
 ## Check correlation between numeric IV
@@ -655,6 +718,17 @@ m_full <- brm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_co
               chains = 4,
               cores = 2,
               file = "outputs/m_full",
+              control = list(adapt_delta = 0.99)) 
+
+m_test <- brm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + ego_np_501c3 + alter_np_501c3 + np_match + ego_ej_mission + alter_ej_mission + ej_diff_cat + count_ego_issues + count_alter_issues + i_match + ego_local + alter_local + geo_diff_cat + distance_n + (1|ego) + (1|alter), 
+              data = m_df, 
+              family = bernoulli(link = "logit"), 
+              prior = c(prior(normal(0,1), class = b),
+                        prior(normal(0,10), class = Intercept)), # very weak prior for intercept so we don't influence it
+              warmup = 1000, #burn in period
+              iter = 2000, #actual samples
+              chains = 4,
+              cores = 2,
               control = list(adapt_delta = 0.99)) 
 
 ### d. Full Model (ego only)
@@ -728,9 +802,12 @@ m_full_subset <- brm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count
                 control = list(adapt_delta = 0.99)) 
 
 ## 6. Model Plots ----
+m_re <- readRDS("outputs/m_re.rds")
+m_bd <- readRDS("outputs/m_bd.rds")
+m_full <- readRDS("outputs/m_full.rds")
 ### a. Coefficient Plots ----
 #### Resource Exchange Model ----
-coefs_re <- gather_coefs(m_re, "Resource Exchange")
+coefs_re <- gather_coefs_re(m_full, "Resource Exchange")
 
 coefs_re_plot <- coefs_re %>% 
   mutate(ordering = case_when(
@@ -752,10 +829,10 @@ coefs_re_plot <- coefs_re %>%
 
 coefs_re_plot
 
-ggsave("plots/coefs_re.png", coefs_re_plot, width = 9, height = 5, dpi = 600, units = "in")
+#ggsave("plots/coefs_re.png", coefs_re_plot, width = 9, height = 5, dpi = 600, units = "in")
 
 #### Boundary Definition ----
-coefs_bd <- gather_coefs(m_bd, "Boundary Definition")
+coefs_bd <- gather_coefs_bd(m_full, "Boundary Definition")
 
 coefs_bd_plot <- coefs_bd %>% 
   mutate(ordering = case_when(
@@ -779,7 +856,7 @@ coefs_bd_plot <- coefs_bd %>%
 
 coefs_bd_plot
 
-ggsave("plots/coefs_bd.png", coefs_bd_plot, width = 9, height = 7, dpi = 600, units = "in")
+#ggsave("plots/coefs_bd.png", coefs_bd_plot, width = 9, height = 7, dpi = 600, units = "in")
 
 ### b. Posterior Prediction Plots --------
 #### Collaborative Membership -----
@@ -1080,6 +1157,7 @@ alter_dist <- m_df %>%
 alter_dist
 ggsave("plots/alter_dist.png", alter_dist, width = 6, height = 4, dpi = 600, units = "in")
 ## 2. Model Results Comparison ----
+
 ### a. Plot ----
 coefs_re <- gather_coefs(m_re, "Resource Exchange")
 coefs_bd <- gather_coefs(m_bd, "Boundary Definition")

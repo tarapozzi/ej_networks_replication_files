@@ -116,7 +116,7 @@ nodelist <- read.csv("data/nodelist.csv")
 edgelist <- read.csv("data/edgelist.csv")
 
 ## Descriptive Plots ----
-collaborative_list <- data.frame(org = c("California Environmental Justice Alliance", "ClimatePlan", "Capital Region Climate Readiness Collaborative", "Edge Collaborative", "Environmental Council of Sacramento", "Environmental Justice Coalition for Water", "RISE Stockton Coalition", "Delta Adapts", "Regional Water Forum", "San Joaquin Regional Climate Collaborative", "Yolo County Climate Action Commission", "Sacramento Environmental Justice Collaborative Governance Committee", "Stockton AB 617 Steering Committee", "Stockton Rising", "San Joaquin Healthy Neighborhoods Collaborative"), year = c(2001, 2007, 2013, 2021, 1971, 1999, 2018, 2018, 2000, 2022, 2020, 2018, 2019, 2022, 2020), Type = "Collaborative")
+collaborative_list <- data.frame(org = c("California Environmental Justice Alliance", "ClimatePlan", "Capital Region Climate Readiness Collaborative", "Edge Collaborative", "Environmental Council of Sacramento", "Environmental Justice Coalition for Water", "RISE Stockton Coalition", "Delta Adapts", "Regional Water Forum", "San Joaquin Regional Climate Collaborative", "Yolo County Climate Action Commission", "Sacramento Environmental Justice Collaborative Governance Committee", "Stockton AB 617 Steering Committee", "Stockton Rising", "San Joaquin Healthy Neighborhoods Collaborative", "Delta Tribal Environmental Coalition"), year = c(2001, 2007, 2013, 2021, 1971, 1999, 2018, 2018, 2000, 2022, 2020, 2018, 2019, 2022, 2020, 2023), Type = "Collaborative")
 
 year_plot <- nodelist %>%
   mutate(Type = "EJ Group") %>%
@@ -170,7 +170,7 @@ d <- edgelist %>%
   left_join(., nodelist, by = c("ego" = "ID")) %>% # add attributes based on group ID
   rename_with(., ~paste0("ego_", .x), .cols=-c(1:2)) %>%# change column name to signify the new attribute are with respect to the ego's characteristics 
   left_join(., nodelist, by = c("alter" = "ID")) %>% # add attributes based on group ID
-  rename_with(., ~paste0("alter_", .x), .cols=-c(1:13)) # do the same thing for the alter groups but do not rename the existing columns
+  rename_with(., ~paste0("alter_", .x), .cols=-c(1:14)) # do the same thing for the alter groups but do not rename the existing columns
 
 ## Create a new column in d to signify observed collaboration between orgs based on the original edgelist
 d <- d %>%
@@ -181,6 +181,7 @@ d <- d %>%
 #### Distance ----
 ## create two different dfs: one for egos and one for alters & add coordinates for home office & turn into spatial object
 egos <- d %>% select(ego) %>% distinct() %>% pull()
+
 ## ego dataset
 d_egos <- d %>%
   select(ego, ego_type, ego_office_location, ego_np_501c3, ego_staff, ego_rev_pp22, ego_assets_pp22, ego_geo_scale, ego_geo_scale_type, ego_ej_mission, ego_ej_issues, ego_collaboratives) %>%
@@ -528,7 +529,7 @@ alter_cat_summary
 ## 3. Potential ego-alter ----
 pot_pair_summary <- m_df %>%
   filter(dv == 0) %>%
-  select(overlap_collab, i_match, distance) %>%
+  select(overlap_collab, i_match, distance_n) %>%
   unique() %>%
   summary()
 pot_pair_summary
@@ -567,7 +568,7 @@ m_df %>%
 ## 4. Observed ego-alter ties -----
 pair_summary <- m_df %>%
   filter(dv == 1) %>%
-  select(overlap_collab, i_match, distance) %>%
+  select(overlap_collab, i_match, distance_n) %>%
   unique() %>%
   summary()
 #0.000621371: conversion factor from meters to miles
@@ -750,7 +751,7 @@ loo_compare(loo(m_bd), loo(m_re), loo(m_full))
 
 ## 4. Prior Selection ----
 ### a. Shrinkage Priors ----
-#The horseshoe prior is a special shrinkage prior initially proposed by Carvalho et al. (2009). It is symmetric around   zero with fat tails and an infinitely large spike at zero. This makes it ideal for sparse models that have many regression coefficients, although only a minority of them is non- zero. The horseshoe prior can be applied on all population-level effects at once (excluding the intercept) by using set_prior("horseshoe(1)"). (p. 70)
+#The horseshoe prior is a special shrinkage prior initially proposed by Carvalho et al. (2009). It is symmetric around  zero with fat tails and an infinitely large spike at zero. This makes it ideal for sparse models that have many regression coefficients, although only a minority of them is non- zero. The horseshoe prior can be applied on all population-level effects at once (excluding the intercept) by using set_prior("horseshoe(1)"). (p. 70)
 set.seed(1992)
 m_full_s <- brm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + ego_np_501c3 + alter_np_501c3 + np_match + ego_ej_mission + alter_ej_mission + ej_diff_cat + count_ego_issues + count_alter_issues + i_match + ego_local + alter_local + geo_diff_cat + distance_n + (1|ego) + (1|alter), 
               data = m_df, 
@@ -781,6 +782,7 @@ m_full_c <- brm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_
 
 ### d. Selection ----
 loo_compare(loo(m_full), loo(m_full_s), loo(m_full_c))
+
 
 ## 5. Model Robustness Checks ----
 ### a. Full Model without G43 ----
@@ -866,7 +868,7 @@ collab_memb_predictions <- m_full %>%
                                     c_diff_cat = "match", # most common
                                     count_ego_collaboratives = 1.00, # median 
                                     count_alter_collaboratives = 0, # median
-                                    overlap_collab = seq(0, 3, by = 1),
+                                    overlap_collab = seq(0, 4, by = 1),
                                     ego_np_501c3 = 1, # median 
                                     alter_np_501c3 = 1, # median 
                                     np_match = "np_homophily", # most common
@@ -898,7 +900,7 @@ alter_collab <- m_full %>%
                                     alter_capacity_n = 0.001, # median
                                     c_diff_cat = "match", # most common
                                     count_ego_collaboratives = 1.00, # median
-                                    count_alter_collaboratives = seq(0, 8, by = 1), # median
+                                    count_alter_collaboratives = seq(0, 7, by = 1), # median
                                     overlap_collab = 0,
                                     ego_np_501c3 = 1, # median
                                     alter_np_501c3 = 1, # median
@@ -995,7 +997,7 @@ plot_distance_predictions
 prediction_plots <- cowplot::plot_grid(plot_collab_memb, plot_alter_collab, plot_i_match_predictions, plot_distance_predictions, labels = "auto")
 prediction_plots
 
-ggsave("plots/posterior_predictions.png", prediction_plots, width = 10, height = 6, dpi = 600, units = "in")
+#ggsave("plots/posterior_predictions.png", prediction_plots, width = 10, height = 6, dpi = 600, units = "in")
 
 ##### Prediction summary -----
 collab_memb_predictions %>% group_by(factor(overlap_collab)) %>% summarize(mean(.epred))
@@ -1113,7 +1115,7 @@ plot_ej3
 ej_predict_plots <- cowplot::plot_grid(plot_ej1, plot_ej2, plot_ej3, nrow = 1, labels = "auto")
 ej_predict_plots
 
-ggsave("plots/ej_posterior_predictions.png", ej_predict_plots, width = 10, height = 6, dpi = 600, units = "in")
+#ggsave("plots/ej_posterior_predictions.png", ej_predict_plots, width = 10, height = 6, dpi = 600, units = "in")
 
 ##### Prediction summary -----
 ej1 %>% group_by(factor(ego_ej_mission)) %>% summarize(mean(.epred))
@@ -1156,6 +1158,10 @@ alter_dist <- m_df %>%
   theme_minimal()
 alter_dist
 ggsave("plots/alter_dist.png", alter_dist, width = 6, height = 4, dpi = 600, units = "in")
+
+org_distributions <- cowplot::plot_grid(ego_dist, alter_dist, labels = "auto")
+
+ggsave("plots/org_distributions.png", org_distributions, width = 8, height = 4, dpi = 600, units = "in")
 ## 2. Model Results Comparison ----
 
 ### a. Plot ----
@@ -1167,7 +1173,7 @@ combined_coefs_plot <- combine_coefs_plot3(coefs_re, coefs_bd, coefs_full)
 
 combined_coefs_plot
 
-ggsave("plots/coefs_all_models.png", combined_coefs_plot, width = 9, height = 10, dpi = 600, units = "in")
+#ggsave("plots/coefs_all_models.png", combined_coefs_plot, width = 9, height = 10, dpi = 600, units = "in")
 
 ### b. Coefficient Table ----
 sjPlot::tab_model(m_re, m_bd, m_full, dv.labels = c("Resource Exchange", "Boundary Definition", "Full Model"), file = "outputs/paper_model_table.doc")
@@ -1189,11 +1195,11 @@ ggsave("plots/coefs_full_model_no_ejcw_comp.png", combined_coefs_plot2, width = 
 
 ## 2. Model Diagnostics ----
 ### a. Posterior Predictive Check ----
-ppc <- pp_check(m_full_c, type = "dens_overlay", ndraws = 100)
+ppc <- pp_check(m_full, type = "dens_overlay", ndraws = 100)
 ggsave("plots/ppc.png", ppc, width = 6, height = 4, dpi = 600, units = "in")
 
 ### b. Trace Plots ----
-trace <- plot(m_full_c)
+trace <- plot(m_full)
 ggsave("plots/trace_plots.png", trace, width = 6, height = 4, dpi = 600, units = "in")
 
 ## 3. Prior Selection ----
@@ -1209,5 +1215,5 @@ combined_coefs_plot <- combine_coefs_plot3(coefs_c, coefs_s, coefs_full)
 
 combined_coefs_plot
 
-ggsave("plots/coefs_all_priors.png", combined_coefs_plot, width = 9, height = 10, dpi = 600, units = "in")
+#ggsave("plots/coefs_all_priors.png", combined_coefs_plot, width = 9, height = 10, dpi = 600, units = "in")
 

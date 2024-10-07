@@ -11,6 +11,8 @@ library(sna) # network analysis
 library(brms) # modeling package
 library(tidybayes) # model results interpretation
 
+## Make sure to run function script before running this script
+
 # A. Case Study ----
 ## Legal Delta 
 delta.boundary <- st_read("/Users/tarapozzi/Documents/R-Projects/ej_networks/data/raw/i03_Delta_PrimarySecondary_Zones/i03_Delta_PrimarySecondary_Zones.shp") %>%
@@ -305,8 +307,9 @@ d <-  d %>%
 ### Resources ----
 #### Non profit status homophily ----
 d <- d %>%
-  mutate(np_match = ifelse(alter_np_501c3 == 1 & ego_np_501c3 == 1, "np_homophily",
-                           ifelse(alter_np_501c3 == 0 & ego_np_501c3 == 0, "no_np_homophily", "no_match"))) %>%
+  mutate(np_match = ifelse(ego_np_501c3 == 1 & alter_np_501c3 == 1, "np_homophily",
+                           ifelse(ego_np_501c3 == 0 & alter_np_501c3 == 0, "no_np_homophily", 
+                                  ifelse(ego_np_501c3 == 1 & alter_np_501c3 == 0, "lower", "higher")))) %>%
   ungroup()
 
 #### Resource capacity ----
@@ -477,7 +480,7 @@ class(bounded_d)
 
 ## select variables that will be included in model 
 bounded_d <- bounded_d %>%
-  select(ego, alter, dv, ego_capacity_n, alter_capacity_n, c_diff_cat, count_ego_collaboratives, count_alter_collaboratives, overlap_collab,  ego_np_501c3, alter_np_501c3, np_match, ego_ej_mission, alter_ej_mission, ej_diff_cat, count_ego_issues, count_alter_issues, i_match, ego_local, alter_local, geo_diff_cat, distance)
+  select(ego, alter, dv, ego_capacity_n, alter_capacity_n, ej_diff, c_diff, c_diff_cat, count_ego_collaboratives, count_alter_collaboratives, overlap_collab,  ego_np_501c3, alter_np_501c3, np_match, ego_ej_mission, alter_ej_mission, ej_diff_cat, count_ego_issues, count_alter_issues, i_match, ego_local, alter_local, geo_diff_cat, distance)
 
 ## 5. Export model data ----
 write.csv(bounded_d, "outputs/model_dataset.csv")
@@ -487,7 +490,7 @@ m_df <- read.csv("outputs/model_dataset.csv") %>%
   mutate(c_diff_cat = factor(c_diff_cat, levels = c("match", "lower", "higher")), 
          ej_diff_cat= factor(ej_diff_cat, levels = c("match", "lower", "higher")), 
          geo_diff_cat = factor(geo_diff_cat, levels = c("local_match", "regional_match", "smaller", "bigger")),
-         np_match = factor(np_match, levels = c("np_homophily", "no_match", "no_np_homophily")), 
+         np_match = factor(np_match, levels = c("np_homophily", "lower", "higher", "no_np_homophily")), 
          ego_local = factor(ego_local, levels = c("local", "regional")), 
          alter_local = factor(alter_local, levels = c("local", "regional")), 
          distance_n = normalize(distance)) %>%
@@ -542,7 +545,7 @@ m_df %>%
   group_by(c_diff_cat) %>%
   count()
 # higher: means that alter has higher capacity than ego OR ego has lower capacity than alter
-# lower: means that alter has lower cpacity than ego OR ego has higher capacity than alter
+# lower: means that alter has lower capacity than ego OR ego has higher capacity than alter
 
 m_df %>%
   filter(dv == 0) %>%
@@ -709,7 +712,7 @@ m_bd <- brm(dv ~ ego_ej_mission + alter_ej_mission + ej_diff_cat + count_ego_iss
 
 ### c. Full Model (ego + alter RE)
 set.seed(1992)
-m_full <- brm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + ego_np_501c3 + alter_np_501c3 + np_match + ego_ej_mission + alter_ej_mission + ej_diff_cat + count_ego_issues + count_alter_issues + i_match + ego_local + alter_local + geo_diff_cat + distance_n + (1|ego) + (1|alter), 
+m_full <- brm(dv ~ 1 + ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + ego_np_501c3 + alter_np_501c3 + np_match + ego_ej_mission + alter_ej_mission + ej_diff_cat + count_ego_issues + count_alter_issues + i_match + ego_local + alter_local + geo_diff_cat + distance_n + (1|ego) + (1|alter), 
               data = m_df, 
               family = bernoulli(link = "logit"), 
               prior = c(prior(normal(0,1), class = b),
@@ -719,17 +722,6 @@ m_full <- brm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_co
               chains = 4,
               cores = 2,
               file = "outputs/m_full",
-              control = list(adapt_delta = 0.99)) 
-
-m_test <- brm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + ego_np_501c3 + alter_np_501c3 + np_match + ego_ej_mission + alter_ej_mission + ej_diff_cat + count_ego_issues + count_alter_issues + i_match + ego_local + alter_local + geo_diff_cat + distance_n + (1|ego) + (1|alter), 
-              data = m_df, 
-              family = bernoulli(link = "logit"), 
-              prior = c(prior(normal(0,1), class = b),
-                        prior(normal(0,10), class = Intercept)), # very weak prior for intercept so we don't influence it
-              warmup = 1000, #burn in period
-              iter = 2000, #actual samples
-              chains = 4,
-              cores = 2,
               control = list(adapt_delta = 0.99)) 
 
 ### d. Full Model (ego only)

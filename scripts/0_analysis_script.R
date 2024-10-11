@@ -10,7 +10,7 @@ library(ggraph) # network plot
 library(sna) # network analysis
 library(brms) # modeling package
 library(tidybayes) # model results interpretation
-
+library(emmeans)
 ## Make sure to run function script before running this script
 
 # A. Case Study ----
@@ -496,6 +496,9 @@ m_df <- read.csv("outputs/model_dataset.csv") %>%
          distance_n = normalize(distance)) %>%
   select(-X, -distance) # remove ID and distance
 
+hist(m_df$ego_ej_mission)
+hist(m_df$alter_ej_mission)
+
 ## Descriptive Results ----
 ## Table ----
 ## Code for comparison table of independent variables across egos, alters, potential ego-alter ties, and observed ego-alter ties
@@ -711,8 +714,19 @@ m_bd <- brm(dv ~ ego_ej_mission + alter_ej_mission + ej_diff_cat + count_ego_iss
             control = list(adapt_delta = 0.99)) 
 
 ### c. Full Model (ego + alter RE)
+# EJ commitment
+# could try just an interaction with categorial ego & categorical alter: 16 categories
+# categorical ego & numerical alter: 4 groups, each with a slope
+
+# if you do 0, not helpful because intercept will be 0
+# instead calc average intercept for group 
+# contrasts -- sum to zero contrast 
+## default is treatment contrast 
+## contrasts = list(species=contr.sum)
+## then the result would show the difference in each group from the average intercept value for that group
+# contrasts in emmeans to plot the differences
 set.seed(1992)
-m_full <- brm(dv ~ 1 + ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + ego_np_501c3 + alter_np_501c3 + np_match + ego_ej_mission + alter_ej_mission + ej_diff_cat + count_ego_issues + count_alter_issues + i_match + ego_local + alter_local + geo_diff_cat + distance_n + (1|ego) + (1|alter), 
+m_full <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + ego_np_501c3 + alter_np_501c3 + factor(np_match) + ego_ej_mission + alter_ej_mission + factor(ego_ej_mission):alter_ej_mission + count_ego_issues + count_alter_issues + i_match + ego_local + alter_local + factor(geo_diff_cat) + distance_n + (1|ego) + (1|alter), 
               data = m_df, 
               family = bernoulli(link = "logit"), 
               prior = c(prior(normal(0,1), class = b),
@@ -723,6 +737,7 @@ m_full <- brm(dv ~ 1 + ego_capacity_n + alter_capacity_n + c_diff_cat + count_eg
               cores = 2,
               file = "outputs/m_full",
               control = list(adapt_delta = 0.99)) 
+
 
 ### d. Full Model (ego only)
 set.seed(1992)
@@ -800,6 +815,35 @@ m_re <- readRDS("outputs/m_re.rds")
 m_bd <- readRDS("outputs/m_bd.rds")
 m_full <- readRDS("outputs/m_full.rds")
 ### a. Coefficient Plots ----
+#### Numerical predictors ----
+
+#### Categorical predictors ----
+# use emmeans to calculate intervals:
+# The basic sequence is that you create the comparison with emmeans, then calculate contrasts (with method='eff' to calculate the difference from average and adjust='bonferroni' for the Bonferroni method of correcting for multiple testing). Then since you want the confidence interval instead of the estimates, you pass the result to the confit function. - Wes Brooks help on this 
+# variable names
+names(insight::get_data(m_full))
+
+# rebuild reference grid
+rg <- ref_grid(m_full)
+## predictors are related to binary predictors & therefore emmeans detects nesting
+np_match_ci <- emmeans(m_full, specs="np_match") |>
+  contrast(method="eff", adjust="bonferroni") |>
+  confint()
+np_match_ci
+
+geo_diff_ci <- emmeans(m_full, specs="geo_diff_cat") |>
+  contrast(method="eff", adjust="bonferroni") |>
+  confint()
+
+# capacity is not nested
+c_diff_ci <- emmeans(m_full, specs = "c_diff_cat", by = c("ego_capacity_n", "alter_capacity_n")) |>
+  contrast(method="eff", adjust="bonferroni") |>
+  confint()
+
+ej_diff_ci <- emtrends(m_full, ~ factor(ego_ej_mission)*alter_ej_mission) |>
+  contrast(method="eff", adjust="bonferroni") |>
+  confint()
+
 #### Resource Exchange Model ----
 coefs_re <- gather_coefs_re(m_full, "Resource Exchange")
 

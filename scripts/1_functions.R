@@ -1,6 +1,96 @@
 ## normalize data
 normalize <- function(x){(x - min(x, na.rm = TRUE))/(max(x, na.rm = TRUE) - min(x, na.rm = TRUE))}
 
+# gather coefficient estimates from model results for numerical predictors
+gather_coefs_numeric <-  function(m, name) {
+  variables <- c("b_ego_capacity_n", "b_ego_ej_mission", "b_alter_capacity_n", "b_c_diff_n", "b_alter_ej_mission",  "b_distance_n", "b_i_match", "b_count_alter_collaboratives", "b_count_ego_issues", "b_count_alter_issues", "b_count_ego_collaboratives", "b_overlap_collab")
+  d <- m %>% 
+    tidy_draws() %>%
+    gather_variables() %>%
+    filter(.variable %in% variables) %>% 
+    dplyr:: rename(par=.variable, value=.value) %>%
+    median_qi(.width = c(.89, .5))%>%
+    mutate(type = case_when(
+      par == "b_alter_capacity_n" ~ "Capacity", 
+      par == "b_ego_capacity_n" ~ "Capacity",
+      par == "b_alter_ej_mission" ~ "Boundary Definition", 
+      par == "b_ego_ej_mission" ~ "Boundary Definition", 
+      par == "b_distance_n" ~ "Boundary Definition", 
+      par == "b_count_alter_collaboratives_s" ~ "Capacity",
+      par == "b_count_ego_issues" ~ "Boundary Definition", 
+      par == "b_count_alter_issues" ~ "Boundary Definition",
+      par == "b_i_match" ~ "Boundary Definition", 
+      par == "b_overlap_collab" ~ "Capacity",
+      par == "b_c_diff_n" ~ "Capacity", 
+      par == "b_count_ego_collaboratives" ~ "Capacity", 
+      par == "b_count_alter_collaboratives" ~ "Capacity" 
+    )) %>%
+    mutate(hyp = case_when(
+      par == "b_alter_capacity_n" ~ "Individual", 
+      par == "b_ego_capacity_n" ~ "Individual",
+      par == "b_alter_ej_mission" ~ "Individual", 
+      par == "b_ego_ej_mission" ~ "Individual", 
+      par == "b_distance_n" ~ "Relational", 
+      par == "b_count_alter_collaboratives_s" ~ "Individual",
+      par == "b_count_ego_issues" ~ "Individual", 
+      par == "b_count_alter_issues" ~ "Individual",
+      par == "b_i_match" ~ "Relational", 
+      par == "b_overlap_collab" ~ "Relational",
+      par == "b_ego_np_501c3" ~ "Individual", 
+      par == "b_c_diff_n" ~ "Relational", 
+      par == "b_count_ego_collaboratives" ~ "Individual", 
+      par == "b_count_alter_collaboratives" ~ "Individual"
+      )) %>%
+    mutate(mode = case_when(
+      par == "b_alter_capacity_n" ~ "Resource Exchange",
+      par == "b_ego_capacity_n" ~ "Resource Exchange",
+      par == "b_ego_ej_mission" ~ "Boundary Definition",
+      par == "b_count_alter_issues" ~ "Boundary Definition", 
+      par == "b_alter_ej_mission" ~ "Boundary Definition", 
+      par == "b_distance_n" ~ "Boundary Definition", 
+      par == "b_i_match" ~ "Boundary Definition", 
+      ar == "b_count_alter_collaboratives_s" ~ "Resource Exchange",
+      par == "b_count_ego_issues" ~ "Boundary Definition", 
+      par == "b_count_alter_issues" ~ "Boundary Definition",
+      par == "b_i_match" ~ "Boundary Definition", 
+      par == "b_c_diff_n" ~ "Resource Exchange", 
+      par == "b_count_ego_collaboratives" ~ "Resource Exchange", 
+      par == "b_count_alter_collaboratives" ~ "Resource Exchange", 
+      par == "b_overlap_collab" ~ "Resource Exchange"
+      )) %>%
+    mutate(type = factor(type, c("Capacity", "Boundary Definition"))) %>%
+    mutate(hyp = factor(hyp, c("Relational", "Individual"))) %>%
+    mutate(par = case_when(
+      par == "b_alter_capacity_n" ~ "Alter Capacity", 
+      par == "b_ego_capacity_n" ~ "Ego Capacity",
+      par == "b_ego_ej_mission" ~ "Ego EJ Commitment",
+      par == "b_count_alter_issues_s" ~ "Alter No. of Issues", 
+      par == "b_alter_ej_mission" ~ "Alter:EJ Commitment", 
+      par == "b_distance_n" ~ "Heterophily: Distance Between Home Offices", 
+      par == "b_count_alter_collaboratives" ~ "Alter No. of Collaboratives",
+      par == "b_count_ego_issues" ~ "Ego No. of Issues", 
+      par == "b_count_alter_issues" ~ "Alter No. of Issues",
+      par == "b_i_match" ~ "Homophily: No. of Matching Issues", 
+      par == "b_overlap_collab" ~ "Homophily: Collaborative Membership Overlap", 
+      par == "b_c_diff_n" ~ "Heterophily: Capacity Difference", 
+      par == "b_count_ego_collaboratives" ~ "Ego No. of Collaboratives", 
+      par == "b_count_alter_collaboratives" ~ "Alter No. of Collaboratives"
+      )) %>%
+    mutate(variable = case_when(
+      str_detect(par, regex("Capacity*")) ~ "Capacity",
+      str_detect(par, regex("Collaborative*")) ~ "Collaborative",
+      str_detect(par, regex("501c3*")) ~ "501c3 Status", 
+      str_detect(par, regex("Commitment*")) ~ "EJ Commitment", 
+      str_detect(par, regex("Issues*")) ~ "EJ Issues", 
+      str_detect(par, regex("Group*")) ~ "Geography", 
+      str_detect(par, regex("Distance*")) ~ "Geography"
+    )) %>%
+    mutate(ordering = -as.integer(factor(variable)) + value) %>%
+    mutate(par = fct_reorder(par, ordering,  .desc = F)) %>%
+    mutate(model = name)
+  return(d)
+} 
+
 # gather coefficient estimates from model results 
 gather_coefs <-  function(m, name) {
   variables <- c("b_ego_capacity_n", "b_ego_ej_mission", "b_ego_np_501c3", "b_alter_np_501c3", "b_alter_capacity_n", "b_c_diff_n", "b_alter_ej_mission", "b_alter_localnonlocal", "b_distance_n", "b_np_match", "b_c_diff_catlower","b_c_diff_cathigher", "b_i_match_s", "b_ej_diff_catlower", "b_ej_diff_cathigher", "b_count_alter_collaboratives", "b_geo_diff_catbigger", "b_geo_diff_catsmaller", "b_ego_localregional","b_alter_localregional",  "b_geo_diff_catlocal_match", "b_geo_diff_catregional_match", "b_count_ego_issues", "b_count_alter_issues", "b_i_match", "b_count_ego_collaboratives", "b_overlap_collab", "b_np_matchnp_homophily", "b_np_matchlower", "b_np_matchhigher")

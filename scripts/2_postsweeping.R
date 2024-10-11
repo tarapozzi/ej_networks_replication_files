@@ -1,5 +1,5 @@
 # we recommend running this is a fresh R session or restarting your current session
-i#nstall.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+#nstall.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
 
 #cmdstanr::install_cmdstan()
 ## cmdstanr can't interface with tidybayes or marginal effects, so might be better to use rstan 
@@ -7,6 +7,11 @@ i#nstall.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOp
 library(rstan)
 library(brms)
 library(tidyverse)
+
+## Questions ----
+# Do I need to change categorical predictors to random effects?
+# How to integrate post-sweeping code into my stan model?
+# How can I show the results for categorical predictors?
 
 ## data 
 m_df <- read.csv("outputs/model_dataset.csv") %>%
@@ -73,7 +78,7 @@ summary(outcome_brms)
 # Post-sweeping model ----
 # Q: how to include categorical predictors in a stan model with identifiability issues? ----
 ### Convert the Stan code to C++
-ps_c = stanc("ps_model.stan", allow_undefined = TRUE)
+ps_c = stanc("ps_model2.stan", allow_undefined = TRUE)
 
 # Compile C++ified Stan to a binary model object
 ps_model <- stan_model(stanc_ret = ps_c)

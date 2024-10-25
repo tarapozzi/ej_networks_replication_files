@@ -10,37 +10,36 @@ gather_coefs_numeric <-  function(m, name) {
     filter(.variable %in% variables) %>% 
     dplyr:: rename(par=.variable, value=.value) %>%
     median_qi(.width = c(.89, .5))%>%
-    mutate(type = case_when(
-      par == "b_alter_capacity_n" ~ "Capacity", 
-      par == "b_ego_capacity_n" ~ "Capacity",
-      par == "b_alter_ej_mission" ~ "Boundary Definition", 
-      par == "b_ego_ej_mission" ~ "Boundary Definition", 
-      par == "b_distance_n" ~ "Boundary Definition", 
-      par == "b_count_alter_collaboratives_s" ~ "Capacity",
-      par == "b_count_ego_issues" ~ "Boundary Definition", 
-      par == "b_count_alter_issues" ~ "Boundary Definition",
-      par == "b_i_match" ~ "Boundary Definition", 
-      par == "b_overlap_collab" ~ "Capacity",
-      par == "b_c_diff_n" ~ "Capacity", 
-      par == "b_count_ego_collaboratives" ~ "Capacity", 
-      par == "b_count_alter_collaboratives" ~ "Capacity" 
+    mutate(hyp_type = case_when(
+      par == "b_alter_capacity_n" ~ "Control", 
+      par == "b_ego_capacity_n" ~ "Control",
+      par == "b_alter_ej_mission" ~ "Control", 
+      par == "b_ego_ej_mission" ~ "Control", 
+      par == "b_distance_n" ~ "Heterophily", 
+      par == "b_count_alter_collaboratives_s" ~ "Control",
+      par == "b_count_ego_issues" ~ "Control", 
+      par == "b_count_alter_issues" ~ "Control",
+      par == "b_i_match" ~ "Homophily", 
+      par == "b_overlap_collab" ~ "Homophily", 
+      par == "b_count_ego_collaboratives" ~ "Control", 
+      par == "b_count_alter_collaboratives" ~ "Control" 
     )) %>%
-    mutate(hyp = case_when(
-      par == "b_alter_capacity_n" ~ "Individual", 
-      par == "b_ego_capacity_n" ~ "Individual",
-      par == "b_alter_ej_mission" ~ "Individual", 
-      par == "b_ego_ej_mission" ~ "Individual", 
+    mutate(variable_type = case_when(
+      par == "b_alter_capacity_n" ~ "Control", 
+      par == "b_ego_capacity_n" ~ "Control",
+      par == "b_alter_ej_mission" ~ "Control", 
+      par == "b_ego_ej_mission" ~ "Control", 
       par == "b_distance_n" ~ "Relational", 
-      par == "b_count_alter_collaboratives_s" ~ "Individual",
-      par == "b_count_ego_issues" ~ "Individual", 
-      par == "b_count_alter_issues" ~ "Individual",
+      par == "b_count_alter_collaboratives_s" ~ "Control",
+      par == "b_count_ego_issues" ~ "Control", 
+      par == "b_count_alter_issues" ~ "Control",
       par == "b_i_match" ~ "Relational", 
       par == "b_overlap_collab" ~ "Relational",
-      par == "b_ego_np_501c3" ~ "Individual", 
+      par == "b_ego_np_501c3" ~ "Control", 
       par == "b_c_diff_n" ~ "Relational", 
-      par == "b_count_ego_collaboratives" ~ "Individual", 
-      par == "b_count_alter_collaboratives" ~ "Individual"
-      )) %>%
+      par == "b_count_ego_collaboratives" ~ "Control", 
+      par == "b_count_alter_collaboratives" ~ "Control"
+    )) %>%
     mutate(mode = case_when(
       par == "b_alter_capacity_n" ~ "Resource Exchange",
       par == "b_ego_capacity_n" ~ "Resource Exchange",
@@ -49,7 +48,7 @@ gather_coefs_numeric <-  function(m, name) {
       par == "b_alter_ej_mission" ~ "Boundary Definition", 
       par == "b_distance_n" ~ "Boundary Definition", 
       par == "b_i_match" ~ "Boundary Definition", 
-      ar == "b_count_alter_collaboratives_s" ~ "Resource Exchange",
+      par == "b_count_alter_collaboratives_s" ~ "Resource Exchange",
       par == "b_count_ego_issues" ~ "Boundary Definition", 
       par == "b_count_alter_issues" ~ "Boundary Definition",
       par == "b_i_match" ~ "Boundary Definition", 
@@ -57,25 +56,24 @@ gather_coefs_numeric <-  function(m, name) {
       par == "b_count_ego_collaboratives" ~ "Resource Exchange", 
       par == "b_count_alter_collaboratives" ~ "Resource Exchange", 
       par == "b_overlap_collab" ~ "Resource Exchange"
-      )) %>%
-    mutate(type = factor(type, c("Capacity", "Boundary Definition"))) %>%
-    mutate(hyp = factor(hyp, c("Relational", "Individual"))) %>%
+    )) %>%
+    mutate(mode = factor(mode, c("Resource Exchange", "Boundary Definition"))) %>%
+    mutate(variable_type = factor(variable_type, c("Relational", "Control"))) %>%
     mutate(par = case_when(
       par == "b_alter_capacity_n" ~ "Alter Capacity", 
       par == "b_ego_capacity_n" ~ "Ego Capacity",
       par == "b_ego_ej_mission" ~ "Ego EJ Commitment",
       par == "b_count_alter_issues_s" ~ "Alter No. of Issues", 
-      par == "b_alter_ej_mission" ~ "Alter:EJ Commitment", 
-      par == "b_distance_n" ~ "Heterophily: Distance Between Home Offices", 
+      par == "b_alter_ej_mission" ~ "Alter EJ Commitment", 
+      par == "b_distance_n" ~ "Spatial Distance", 
       par == "b_count_alter_collaboratives" ~ "Alter No. of Collaboratives",
       par == "b_count_ego_issues" ~ "Ego No. of Issues", 
       par == "b_count_alter_issues" ~ "Alter No. of Issues",
-      par == "b_i_match" ~ "Homophily: No. of Matching Issues", 
-      par == "b_overlap_collab" ~ "Homophily: Collaborative Membership Overlap", 
-      par == "b_c_diff_n" ~ "Heterophily: Capacity Difference", 
+      par == "b_i_match" ~ "No. of Matching Issues", 
+      par == "b_overlap_collab" ~ "Collaborative Membership Overlap", 
       par == "b_count_ego_collaboratives" ~ "Ego No. of Collaboratives", 
       par == "b_count_alter_collaboratives" ~ "Alter No. of Collaboratives"
-      )) %>%
+    )) %>%
     mutate(variable = case_when(
       str_detect(par, regex("Capacity*")) ~ "Capacity",
       str_detect(par, regex("Collaborative*")) ~ "Collaborative",
@@ -85,11 +83,35 @@ gather_coefs_numeric <-  function(m, name) {
       str_detect(par, regex("Group*")) ~ "Geography", 
       str_detect(par, regex("Distance*")) ~ "Geography"
     )) %>%
-    mutate(ordering = -as.integer(factor(variable)) + value) %>%
-    mutate(par = fct_reorder(par, ordering,  .desc = F)) %>%
-    mutate(model = name)
+    #mutate(ordering = -as.integer(factor(variable)) + value) %>%
+    #mutate(par = fct_reorder(par, ordering,  .desc = F)) %>%
+   # mutate(model = name)
+    select(par, value, .lower, .upper, .width, variable, mode, hyp_type, variable_type)
   return(d)
 } 
+
+# Contrasts function
+# Nesting: if factor levels of one variable are only meaningful within the context of another factor, that could require specifying nesting.
+# Loop through the parameters
+contrasts_calc <- function(m, spec) {
+  d.50 <- emmeans(m, specs = as.formula(paste0("~", spec)), nesting = NULL) %>%
+    contrast(method = "eff", adjust = "bonferroni") %>%
+    confint(level = 0.50) %>%
+    mutate(variable = spec,
+           .width = .50) %>%
+    rename(.lower = lower.HPD, .upper = upper.HPD)
+  
+  d.89 <- emmeans(m, specs = as.formula(paste0("~", spec)), nesting = NULL) %>%
+    contrast(method = "eff", adjust = "bonferroni") %>%
+    confint(level = 0.89) %>%
+    mutate(variable = spec,
+           .width = .89) %>%
+    rename(.lower = lower.HPD, .upper = upper.HPD)
+  
+  d <- rbind(d.50, d.89)
+  
+  return(d)
+}
 
 # gather coefficient estimates from model results 
 gather_coefs <-  function(m, name) {
@@ -210,8 +232,8 @@ gather_coefs <-  function(m, name) {
       par == "b_ego_capacity_n" ~ "Ego Capacity",
       par == "b_ego_ej_mission" ~ "Ego EJ Commitment",
       par == "b_count_alter_issues_s" ~ "Alter No. of Issues", 
-      par == "b_alter_ej_mission" ~ "Alter:EJ Commitment", 
-      par == "b_distance_n" ~ "Heterophily: Distance Between Home Offices", 
+      par == "b_alter_ej_mission" ~ "Alter: EJ Commitment", 
+      par == "b_distance_n" ~ "Heterophily: Spatial Distance", 
       par == "b_alter_localnonlocal" ~  "Alter Regional Group", 
       par == "b_np_match" ~ "Homophily: 501c3 \nStatus Match",
       par == "b_c_diff_catlower" ~ "Heterophily: Lower Capacity Alter than Ego",
@@ -411,7 +433,7 @@ combine_coefs_plot2 <- function(m1, m2){
   coefs.plot <- df %>% 
     # mutate(ordering = case_when( # this NEEDS WORK if i want to use it in the appendix
     #   par ==  "Homophily: Collaborative Membership Overlap" ~ - 2,
-    #   par == "Heterophily: Distance Between Home Offices" ~ -10, #put it at the bottom of the plot
+    #   par == "Heterophily: Spatial Distance" ~ -10, #put it at the bottom of the plot
     #   par == "Homophily: No. of Matching Issues" ~ -3.8, 
     #   par == "Heterophily: Lower Capacity Ego than Alter" ~ -5,
     #   TRUE ~ ordering
@@ -440,7 +462,7 @@ combine_coefs_plot3 <- function(m1, m2, m3){
   coefs.plot <- df %>% 
     # mutate(ordering = case_when( # this NEEDS WORK if i want to use it in the appendix
     #   par ==  "Homophily: Collaborative Membership Overlap" ~ - 2,
-    #   par == "Heterophily: Distance Between Home Offices" ~ -10, #put it at the bottom of the plot
+    #   par == "Heterophily: Spatial Distance" ~ -10, #put it at the bottom of the plot
     #   par == "Homophily: No. of Matching Issues" ~ -3.8, 
     #   par == "Heterophily: Lower Capacity Ego than Alter" ~ -5,
     #   TRUE ~ ordering

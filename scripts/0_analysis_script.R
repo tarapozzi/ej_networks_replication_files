@@ -992,15 +992,16 @@ overlap_collab_ame <- emtrends(m_full, ~ overlap_collab, # look at effect overla
                                  re_formula = NA) %>%  # no random effects 
   gather_emmeans_draws()
 
-ggsave("plots/collab_ame.png", overlap_collab_ame, width = 6, height = 4, dpi = 600, units = "in")
-
 # Grand Mean Plot
-ggplot(overlap_collab_ame, aes(x = .value, fill = factor(overlap_collab))) +
+overlap_collab_ame_plot <- ggplot(overlap_collab_ame, aes(x = .value, fill = factor(overlap_collab))) +
   stat_halfeye(slab_alpha = 0.75) +
-  scale_fill_manual(values = c("#88694B", "#35420F", "#35413F"), breaks = c(0, 1, 4), labels = c("Heterophily", "Low Homophily", "High Homophily")) +
-  labs(x = "Average marginal effect of participating \nin one more collaborative", y = "Density", fill = "") +
+  scale_fill_manual(values = c("#88694B", "#35413F", "#35420F"), breaks = c(0, 1, 4), labels = c("Heterophily", "Ave Homophily", "High Homophily")) +
+  labs(x = "Average Marginal Effect of Shared Collaboratives", y = "Density", fill = "") +
   theme_minimal() +
   theme(legend.position = "bottom")
+overlap_collab_ame_plot
+
+ggsave("plots/collab_ame.png", overlap_collab_ame_plot, width = 6, height = 4, dpi = 600, units = "in")
 
 overlap_collab_ame %>% median_hdi()
 # The ego-alter free grand average marginal effect for shared collaborative membership is xx for no overlapping collabs & xx for 4 overlapping labs
@@ -1017,7 +1018,7 @@ i_match_ame <- emtrends(m_full, ~ i_match, # look at effect overlap_collab while
 # Global Grand Mean Plot
 gm_i_match_plot <- ggplot(i_match_ame, aes(x = .value, fill = factor(i_match))) +
   stat_halfeye(slab_alpha = 0.75) +
-  scale_fill_manual(values = c("#88694B", "#35413F", "#35420F"), breaks = c(min(m_df$i_match), mean(m_df$i_match), max(m_df$i_match)), labels = c("Heterophily", "Low Homophily", "High Homophily")) +
+  scale_fill_manual(values = c("#88694B", "#35413F", "#35420F"), breaks = c(min(m_df$i_match), mean(m_df$i_match), max(m_df$i_match)), labels = c("Heterophily", "Ave Homophily", "High Homophily")) +
   labs(x = "Average Marginal Effect of Shared Issues", y = "Density", fill = "") +
   theme_minimal() +
   theme(legend.position = "bottom")
@@ -1025,26 +1026,32 @@ gm_i_match_plot <- ggplot(i_match_ame, aes(x = .value, fill = factor(i_match))) 
 # The global grand average marginal effect for shared issues is xx for no issues, xx for 4 issues, & xx for 6 overlapping issues
 gm_i_match_plot
 ggsave("plots/imatch_ame.png", gm_i_match_plot, width = 6, height = 4, dpi = 600, units = "in")
+i_match_ame %>% median_hdi()
+
 
 ### Distance ----
-distance_ame <- emtrends(m_full, ~ distance, # look at effect distance while taking group-level effects into account
+distance_ame <- emtrends(m_full, ~ distance_n, 
                         var = "distance_n", 
-                        at = list(distance = c(min(m_df$distance), mean(m_df$distance), max(m_df$distance))),
+                        at = list(distance_n = c(
+                          min(m_df$distance_n), 
+                          mean(m_df$distance_n), 
+                          max(m_df$distance_n))),
                         nesting = NULL, 
                         epred = TRUE, 
                         re_formula = NA) %>%  # no random effects 
   gather_emmeans_draws()
 
 # Grand Mean Plot
-gm_distance_plot <- ggplot(i_match_ame, aes(x = .value, fill = factor(i_match))) +
+gm_distance_plot <- ggplot(distance_ame, aes(x = .value, fill = factor(distance_n))) +
   stat_halfeye(slab_alpha = 0.75) +
-  scale_fill_manual(values = c("#88694B", "#35420F", "#35413F"), breaks = c(min(m_df$i_match), mean(m_df$i_match), max(m_df$i_match)), labels = c("Heterophily", "Low Homophily", "High Homophily")) +
-  labs(x = "Average marginal effect of one meter increase in Distance", y = "Density") +
+  scale_fill_manual(values = c("#35413F", "#35420F", "#88694B"), breaks = c(min(m_df$distance_n), mean(m_df$distance_n), max(m_df$distance_n)), labels = c("Homophily", "Ave Heterophily", "High Heterophily")) +
+  labs(x = "Average Marginal Effect of Distance", y = "Density", fill = "") +
   theme_minimal() +
   theme(legend.position = "bottom")
 # The ego-alter free grand average marginal effect for shared collaborative membership is xx for no overlapping collabs & xx for 4 overlapping labs
-
-
+gm_distance_plot
+ggsave("plots/distance_ame.png", gm_distance_plot, width = 6, height = 4, dpi = 600, units = "in")
+distance_ame %>% median_hdi()
       
 # D. Supplemental Information ----
 ## 1. Additional Descriptive Information ----

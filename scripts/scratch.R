@@ -308,3 +308,23 @@ combined_coefs_plot <- combine_coefs_plot3(coefs_re, coefs_bd, coefs_full)
 combined_coefs_plot
 
 #ggsave("plots/coefs_all_models.png", combined_coefs_plot, width = 9, height = 10, dpi = 600, units = "in")
+
+
+## Andrew Heiss Method for Grand Mean AME
+## overlap collab
+overlap_collab_ame <- emtrends(m_full, ~ overlap_collab, 
+                               var = "overlap_collab", 
+                               at = list(overlap_collab = c(min(m_df$overlap_collab), 1, max(m_df$overlap_collab))),
+                               nesting = NULL, 
+                               epred = TRUE, 
+                               re_formula = NA) %>%  # no random effects 
+  gather_emmeans_draws()
+
+# Grand Mean Plot
+overlap_collab_ame_plot <- ggplot(overlap_collab_ame, aes(x = .value, fill = factor(overlap_collab))) +
+  stat_halfeye(slab_alpha = 0.75) +
+  scale_x_manual(values = c("#88694B", "#35413F", "#35420F"), breaks = c(0, 1, 4), labels = c("Heterophily", "Ave Homophily", "High Homophily")) +
+  labs(x = "Average Marginal Effect of Shared Collaboratives", y = "Density", fill = "") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+overlap_collab_ame_plot

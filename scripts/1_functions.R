@@ -15,12 +15,12 @@ gather_coefs_numeric <-  function(m, name) {
       par == "b_ego_capacity_n" ~ "Control",
       par == "b_alter_ej_mission" ~ "Control", 
       par == "b_ego_ej_mission" ~ "Control", 
-      par == "b_distance_n" ~ "Heterophily", 
+      par == "b_distance_n" ~ "Relational", 
       par == "b_count_alter_collaboratives_s" ~ "Control",
       par == "b_count_ego_issues" ~ "Control", 
       par == "b_count_alter_issues" ~ "Control",
-      par == "b_i_match" ~ "Homophily", 
-      par == "b_overlap_collab" ~ "Homophily", 
+      par == "b_i_match" ~ "Relational", 
+      par == "b_overlap_collab" ~ "Relational", 
       par == "b_count_ego_collaboratives" ~ "Control", 
       par == "b_count_alter_collaboratives" ~ "Control" 
     )) %>%
@@ -479,3 +479,4 @@ combine_coefs_plot3 <- function(m1, m2, m3){
     theme(legend.position = "bottom", legend.title = element_text(size = 14), axis.text.x = element_text(size = 14), axis.text.y = element_text(size = 14), legend.text = element_text(size = 14))
   return(coefs.plot)
 }
+

@@ -486,7 +486,9 @@ bounded_d <- bounded_d %>%
 write.csv(bounded_d, "outputs/model_dataset.csv")
 
 # C. Model -----
-m_df <- read.csv("outputs/model_dataset.csv") %>%
+m_df <- read.csv("outputs/model_dataset.csv") 
+
+m_df <- m_df %>%
   mutate(c_diff_cat = factor(c_diff_cat, levels = c("match", "lower", "higher")), 
          ej_diff_cat= factor(ej_diff_cat, levels = c("match", "lower", "higher")), 
          geo_diff_cat = factor(geo_diff_cat, levels = c("local_match", "regional_match", "smaller", "bigger")),
@@ -500,7 +502,7 @@ hist(m_df$ego_ej_mission)
 hist(m_df$alter_ej_mission)
 
 ## Descriptive Results ----
-## Table ----
+## Table 2 ----
 ## Code for comparison table of independent variables across egos, alters, potential ego-alter ties, and observed ego-alter ties
 ## 1. Egos ----
 ego_summary <- m_df %>%
@@ -513,15 +515,20 @@ ego_cat_summary <- m_df %>%
   select(ego, ego_local) %>%
   unique() %>%
   group_by(ego_local) %>%
-  count()
+  count()%>%
+  ungroup() %>%
+  mutate(porp = n/sum(n))
 ego_cat_summary
 
 ## 2. Observed Alters ----
+actual_alters <- edgelist %>% select(alter) %>% distinct() %>% pull()
 alter_summary <- m_df %>%
   filter(alter %in% actual_alters) %>%
   select(alter, alter_np_501c3, alter_capacity_n, count_alter_collaboratives, alter_ej_mission, count_alter_issues) %>%
   unique() %>%
-  summary()
+  summary()%>%
+  ungroup() %>%
+  mutate(porp = n/sum(n))
 alter_summary
 
 alter_cat_summary <- m_df %>%
@@ -529,7 +536,9 @@ alter_cat_summary <- m_df %>%
   select(alter, alter_local) %>%
   unique() %>%
   group_by(alter_local) %>%
-  count()
+  count()%>%
+  ungroup() %>%
+  mutate(porp = n/sum(n))
 alter_cat_summary
 
 ## 3. Potential ego-alter ----
@@ -537,7 +546,7 @@ pot_pair_summary <- m_df %>%
   filter(dv == 0) %>%
   select(overlap_collab, i_match, distance_n) %>%
   unique() %>%
-  summary()
+  summary() 
 pot_pair_summary
 #0.000621371: conversion factor from meters to miles
 
@@ -546,7 +555,8 @@ m_df %>%
   select(ego, alter, c_diff_cat) %>%
   unique() %>%
   group_by(c_diff_cat) %>%
-  count()
+  ungroup() %>%
+  mutate(porp = n/sum(n))
 # higher: means that alter has higher capacity than ego OR ego has lower capacity than alter
 # lower: means that alter has lower capacity than ego OR ego has higher capacity than alter
 
@@ -555,14 +565,17 @@ m_df %>%
   select(ego, alter, np_match) %>%
   unique() %>%
   group_by(np_match) %>%
-  count()
+  count() %>%
+  ungroup() %>%
+  mutate(porp = n/sum(n))
 
 m_df %>%
   filter(dv == 0) %>%
   select(ego, alter, ej_diff_cat) %>%
-  unique() %>%
   group_by(ej_diff_cat) %>%
-  count()
+  count() %>%
+  ungroup() %>%
+  mutate(porp = n/sum(n))
 
 m_df %>%
   filter(dv == 0) %>%
@@ -585,7 +598,9 @@ m_df %>%
   select(ego, alter, c_diff_cat) %>%
   unique() %>%
   group_by(c_diff_cat) %>%
-  count()
+  count()%>%
+  ungroup() %>%
+  mutate(porp = n/sum(n))
 # higher: means that alter has higher capacity than ego OR ego has lower capacity than alter
 # lower: means that alter has lower cpacity than ego OR ego has higher capacity than alter
 
@@ -594,21 +609,27 @@ m_df %>%
   select(ego, alter, np_match) %>%
   unique() %>%
   group_by(np_match) %>%
-  count()
+  count()%>%
+  ungroup() %>%
+  mutate(porp = n/sum(n))
 
 m_df %>%
   filter(dv == 1) %>%
   select(ego, alter, ej_diff_cat) %>%
   unique() %>%
   group_by(ej_diff_cat) %>%
-  count()
+  count()%>%
+  ungroup() %>%
+  mutate(porp = n/sum(n))
 
 m_df %>%
   filter(dv == 1) %>%
   select(ego, alter, geo_diff_cat) %>%
   unique() %>%
   group_by(geo_diff_cat) %>%
-  count()
+  count()%>%
+  ungroup() %>%
+  mutate(porp = n/sum(n))
 
 ## Network figure ----
 # Replace anonymous IDs with names for now
@@ -665,11 +686,6 @@ net_plot
 
 
 ## Inferential Results -----
-## 1. Correlation ----
-## Check correlation between numeric IV
-cor_matrix <- cor(m_df[c("ego_capacity_n", "alter_capacity_n", "i_match", "ego_ej_mission", "alter_ej_mission", "distance_n", "count_ego_collaboratives",  "count_alter_collaboratives")])
-cor_matrix
-
 ## 1. Variance Components Models ----
 ### a. Ego Only
 set.seed(1992)
@@ -682,7 +698,53 @@ set.seed(1992)
 m_ego_alter <- brm(dv ~ (1|ego) + (1|alter),  cores = 4, file = "outputs/m_ego_alter.rds",  data = m_df, family = bernoulli(link = "logit"))
 m_ego_alter
 
-## 2. Explanatory Models with REs -----
+## 2. Explanatory Models -----
+### a. Full Model (ego + alter RE)----
+set.seed(1992)
+m_full <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + ego_np_501c3 + alter_np_501c3 + factor(np_match) + ego_ej_mission + alter_ej_mission + factor(ej_diff_cat) + count_ego_issues + count_alter_issues + i_match + ego_local + alter_local + factor(geo_diff_cat) + distance_n + (1|ego) + (1|alter), 
+              data = m_df, 
+              family = bernoulli(link = "logit"), 
+              prior = c(prior(normal(0,1), class = b),
+                        prior(normal(0,10), class = Intercept)), # very weak prior for intercept so we don't influence it
+              warmup = 1000, #burn in period
+              iter = 2000, #actual samples
+              chains = 4,
+              cores = 2,
+              file = "outputs/m_full",
+              control = list(adapt_delta = 0.99))
+
+
+### GVIF Test ----
+## tells you how bad your variance
+## probably not a problem for category
+## if greater than 5 then BAD, 4 is not great and less is one is you are totally uncorrelated
+# Cor matrix
+m_df_num <- m_df %>% select() 
+
+# LME4 model
+library(lme4)
+f_m_full <- glm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + ego_np_501c3 + alter_np_501c3 + np_match + ego_ej_mission + alter_ej_mission + ej_diff_cat + count_ego_issues + count_alter_issues + i_match + ego_local + alter_local + geo_diff_cat + distance_n, data = m_df, family = binomial(link = "logit"))
+
+ld.vars <- attributes(alias(f_m_full)$Complete)$dimnames[[1]]
+ld.vars
+# "np_matchhigher", "np_matchno_np_homophily", "geo_diff_catsmaller", "geo_diff_catbigger"
+
+# remove aliased coefficients
+f_m_full2 <- glm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + np_match + ego_ej_mission + alter_ej_mission + ej_diff_cat + count_ego_issues + count_alter_issues + i_match + geo_diff_cat + distance_n, data = m_df, family = binomial(link = "logit"))
+
+# VIF: let's see how much correlation is happening!
+library(car)
+vif_values <- vif(f_m_full2)
+vif_values
+## EJ mission is problematic.. so just keep relational for that too
+
+f_m_full3 <- glm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + np_match + ej_diff_cat + count_ego_issues + count_alter_issues + i_match + geo_diff_cat + distance_n, data = m_df, family = binomial(link = "logit"))
+
+# Do the test again
+vif_values <- vif(f_m_full3)
+vif_values
+
+### GVIF Refined Models ----
 ### a. Resource Exchange Model (ego + alter RE)----
 set.seed(1992) # set starting seed to make results replicable
 m_re <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + factor(np_match) + (1|ego) + (1|alter), 
@@ -713,21 +775,7 @@ m_bd <- brm(dv ~  factor(ej_diff_cat) + count_ego_issues + count_alter_issues + 
             #file = "outputs/m_bd", # save your model output
             control = list(adapt_delta = 0.99)) 
 
-### c. Full Model Paper (ego + alter RE)----
-set.seed(1992)
-m_full <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + ego_np_501c3 + alter_np_501c3 + factor(np_match) + ego_ej_mission + alter_ej_mission + factor(ej_diff_cat) + count_ego_issues + count_alter_issues + i_match + ego_local + alter_local + factor(geo_diff_cat) + distance_n + (1|ego) + (1|alter), 
-              data = m_df, 
-              family = bernoulli(link = "logit"), 
-              prior = c(prior(normal(0,1), class = b),
-                        prior(normal(0,10), class = Intercept)), # very weak prior for intercept so we don't influence it
-              warmup = 1000, #burn in period
-              iter = 2000, #actual samples
-              chains = 4,
-              cores = 2,
-              file = "outputs/m_full",
-              control = list(adapt_delta = 0.99))
-
-### e. Full Model (ego only)----
+### c. Full Model (ego only)----
 set.seed(1992)
 m_full_ego <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + factor(np_match) + factor(ej_diff_cat) + count_ego_issues + count_alter_issues + i_match + factor(geo_diff_cat) + distance_n + (1|ego), 
                   data = m_df,
@@ -741,7 +789,7 @@ m_full_ego <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + 
                   file = "outputs/m_full_ego",
                   control = list(adapt_delta = 0.99))
 
-## f. Full Model - Minimal controls
+## c. Full Model - refined after VIF test
 set.seed(1992)
 m_full_refined <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + factor(np_match) + factor(ej_diff_cat) + count_ego_issues + count_alter_issues + i_match + factor(geo_diff_cat) + distance_n + (1|ego) + (1|alter), 
               data = m_df, 
@@ -896,8 +944,8 @@ coefs_cat <- contrasts %>%
     contrast == "lower effect" & variable == "c_diff_cat" ~ "Lower Capacity Seeking Higher",
     contrast == "higher effect" & variable == "c_diff_cat" ~ "Higher Capacity Seeking Lower",
     contrast == "match effect" & variable == "ej_diff_cat" ~ "Matching EJ Commitment",
-    contrast == "lower effect" & variable == "ej_diff_cat" ~ "Ego Seeking Alter with Less EJ", 
-    contrast == "higher effect" & variable == "ej_diff_cat" ~ "Ego Seeking Alter with More EJ"
+    contrast == "lower effect" & variable == "ej_diff_cat" ~ "More EJ Seeking Less EJ", 
+    contrast == "higher effect" & variable == "ej_diff_cat" ~ "Less EJ Seeking More EJ"
   )) %>%
   mutate(mode = case_when(
     variable %in% c("geo_diff_cat","ej_diff_cat") ~ "Boundary Definition",
@@ -988,7 +1036,10 @@ np_match_ame <- emmeans(m_full_refined, ~ np_match,
                               re_formula = NA) %>%  # no random effects 
   gather_emmeans_draws()
 
+# ame 
+np_match_ame %>% median_qi()
 
+# plot
 plot_np_match <- np_match_ame %>%
   mutate(np_match = case_when(
     np_match == "no_np_homophily" ~ "Both Non-501c3",
@@ -1018,7 +1069,10 @@ overlap_collab_ame <- emmeans(m_full_refined, ~ overlap_collab,
                                re_formula = NA) %>%  # no random effects 
   gather_emmeans_draws()
 
+# ame
+overlap_collab_ame %>% median_hdi()
 
+# plot
 plot_collab_memb <- ggplot(overlap_collab_ame, 
                            aes(x = overlap_collab, y = .value)) +
   stat_lineribbon() +
@@ -1031,7 +1085,6 @@ plot_collab_memb <- ggplot(overlap_collab_ame,
 plot_collab_memb
 ggsave("plots/collab_ame.png", plot_collab_memb, width = 6, height = 4, dpi = 600, units = "in")
 
-overlap_collab_ame %>% median_hdi()
 
 re_plots <- cowplot::plot_grid(plot_np_match, plot_collab_memb, labels = "auto")
 re_plots
@@ -1049,7 +1102,10 @@ i_match_ame <- emmeans(m_full_refined, ~ i_match, # look at effect overlap_colla
                                re_formula = NA) %>%  # no random effects 
   gather_emmeans_draws()
 
+# ame
+i_match_ame %>% median_hdi()
 
+# plot
 plot_i_match <- ggplot(i_match_ame, 
                            aes(x = i_match, y = .value)) +
   stat_lineribbon() +
@@ -1073,11 +1129,15 @@ geo_ame <- emmeans(m_full_refined, ~ geo_diff_cat,
                         re_formula = NA) %>%  # no random effects 
   gather_emmeans_draws()
 
+# ame
+geo_ame %>% median_hdi()
+
+# plot
 plot_geo <- geo_ame %>%
   mutate(geo_diff_cat = case_when(
     geo_diff_cat == "local_match" ~ "Both Local",
-    geo_diff_cat == "smaller" ~ "Regional Seeking Local",
-    geo_diff_cat == "bigger" ~ "Local Seeking Regional",
+    geo_diff_cat == "smaller" ~ "Regional Seeking \nLocal",
+    geo_diff_cat == "bigger" ~ "Local Seeking \nRegional",
     geo_diff_cat == "regional_match"  ~ "Both Regional",
   )) %>% 
   ggplot(., 
@@ -1101,13 +1161,28 @@ distance_ame <- emmeans(m_full_refined, ~ distance_n,
                         re_formula = NA) %>%  # no random effects 
   gather_emmeans_draws()
 
+# ame
+distance_ame %>% median_hdi()
+
 # Grand Mean Plot
+# Calc miles at each break in the normalized distance values: 
+# summary(m_df$distance): results are in meters
+#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#0   11401   69889   62153   95697  260070 
+# denormalize formula: normalized_d * (max_d - min_d) + min_d
+(.2 *(260070 - 0) + 0)*0.000621371 #0.000621371: conversion factor from meters to miles
+# 32 miles
+(.4 *(260070 - 0) + 0)*0.000621371 # 64 miles
+(.6 *(260070 - 0) + 0)*0.000621371 # 97 miles
+(.8 *(260070 - 0) + 0)*0.000621371 # 129 miles
+(1 *(260070 - 0) + 0)*0.000621371 # 162 miles
+
 plot_dist <- ggplot(distance_ame, 
                        aes(x = distance_n, y = .value)) +
   stat_lineribbon() +
-  scale_x_continuous(breaks = c(0, .2, .4, .6, .8, 1), labels = c("0 \n(Homophily)", ".2", ".4", ".6", ".8", "1 \n(Heterophily)")) +
+  scale_x_continuous(breaks = c(0, .2, .4, .6, .8, 1), labels = c("0 \n(Homophily)", "32", "64", "97", "129", "162 \n(Heterophily)")) +
   scale_fill_brewer(palette = "Greys") +
-  labs(x = "No. of Shared Issues", y = "Tie Probability",
+  labs(x = "Spatial Distance (miles)", y = "Tie Probability",
        fill = "Credible interval") +
   theme_minimal() +
   theme(legend.position = "none")
@@ -1160,33 +1235,30 @@ ggsave("plots/org_distributions.png", org_distributions, width = 8, height = 4, 
 ## 2. Model Results Comparison ----
 
 ### a. Coefficient Table ----
-sjPlot::tab_model(m_re, m_bd, m_full, dv.labels = c("Resource Exchange", "Boundary Definition", "Full Model"), file = "outputs/paper_model_table.doc")
+sjPlot::tab_model(m_re, m_bd, m_full_refined, dv.labels = c("Resource Exchange", "Boundary Definition", "Full Model"), file = "outputs/paper_model_table.doc")
 
-#### a. Categorical predictors ----
+### b. EJ Commitment Model ----
 # use emmeans to calculate intervals:
 # The basic sequence is that you create the comparison with emmeans, then calculate contrasts (with method='eff' to calculate the difference from average and adjust='bonferroni' for the Bonferroni method of correcting for multiple testing). Then since you want the confidence interval instead of the estimates, you pass the result to the confit function. - Wes Brooks help on this 
 # columns
-colnames(m_full$data)
+colnames(m_full_ejfactor$data)
 
 # predictor list
-cat_predictors  <- c("np_match", "geo_diff_cat", "c_diff_cat", "ej_cat_diff")
+cat_predictors  <- c("ego_ej_mission*alter_ej_mission")
 
 # empty data.frame for for loop calc
 contrasts <- data.frame()
 
-# Nesting: if factor levels of one variable are only meaningful within the context of another factor, that could require specifying nesting.
-# Loop through the parameters
-# VERY SLOW (maybe 45 min - an hour): the following code might help 
-#emm_options(lmer.df = "satterthwaite")
+# calc intercepts
 contrasts_calc <- function(spec) {
-  d.50 <- emmeans(m_full, specs = as.formula(paste0("~", spec)), nesting = NULL) %>%
+  d.50 <- emmeans(m_full_ejfactor, specs = as.formula(paste0("~", spec)), nesting = NULL) %>%
     contrast(method = "eff", adjust = "bonferroni") %>%
     confint(level = 0.50) %>%
     mutate(variable = spec,
            .width = .50) %>%
     rename(.lower = lower.HPD, .upper = upper.HPD)
   
-  d.89 <- emmeans(m_full, specs = as.formula(paste0("~", spec)), nesting = NULL) %>%
+  d.89 <- emmeans(m_full_ejfactor, specs = as.formula(paste0("~", spec)), nesting = NULL) %>%
     contrast(method = "eff", adjust = "bonferroni") %>%
     confint(level = 0.89) %>%
     mutate(variable = spec,
@@ -1207,17 +1279,6 @@ for(i in cat_predictors) {
 ## Plot factors
 coefs_cat <- contrasts %>%
   mutate(contrast = case_when(
-    contrast == "no_np_homophily effect" ~ "Both Non-501c3",
-    contrast == "lower effect" & variable == "np_match" ~ "Non-501c3 Seeking 501c3",
-    contrast == "higher effect" & variable == "np_match" ~ "501c3 Seeking Non-501c3",
-    contrast == "np_homophily effect" ~ "Both 501c3",
-    contrast == "local_match effect" ~ "Both Local",
-    contrast == "smaller effect" ~ "Regional Seeking Local",
-    contrast == "bigger effect" ~ "Local Seeking Regional",
-    contrast == "regional_match effect"  ~ "Both Regional",
-    contrast == "match effect" ~ "Same Capacity",
-    contrast == "lower effect" & variable == "c_diff_cat" ~ "Lower Capacity Seeking Higher",
-    contrast == "higher effect" & variable == "c_diff_cat" ~ "Higher Capacity Seeking Lower",
     contrast == "ego_ej_mission1 alter_ej_mission0 effect" ~ "Ego Periperal EJ: Alter No EJ",
     contrast == "ego_ej_mission2 alter_ej_mission0 effect" ~ "Ego Key Work Area EJ: Alter No EJ", 
     contrast == "ego_ej_mission3 alter_ej_mission0 effect" ~ "Ego Central EJ: Alter No EJ",
@@ -1232,17 +1293,6 @@ coefs_cat <- contrasts %>%
     contrast == "ego_ej_mission3 alter_ej_mission3 effect" ~ "Ego Central EJ: Alter Central EJ"
   )) %>%
   mutate(contrast = factor(contrast, levels = c(
-    "Both 501c3", 
-    "Both Non-501c3", 
-    "Same Capacity",
-    "Both Local", 
-    "Both Regional",
-    "501c3 Seeking Non-501c3", 
-    "Non-501c3 Seeking 501c3", 
-    "Lower Capacity Seeking Higher",
-    "Higher Capacity Seeking Lower",
-    "Local Seeking Regional", 
-    "Regional Seeking Local", 
     "Ego Periperal EJ: Alter No EJ",
     "Ego Key Work Area EJ: Alter No EJ", 
     "Ego Central EJ: Alter No EJ",
@@ -1255,42 +1305,11 @@ coefs_cat <- contrasts %>%
     "Ego Periperal EJ: Alter Central EJ", 
     "Ego Key Work Area EJ: Alter Central EJ",
     "Ego Central EJ: Alter Central EJ"
-  ))) %>%
-  mutate(variable = case_when(
-    variable %in% c("geo_diff_cat","ego_ej_mission*alter_ej_mission") ~ "Boundary Definition",
-    variable %in% c("np_match", "c_diff_cat") ~ "Resource Exchange"
-  )) %>%
-  mutate(hyp_type = case_when(
-    contrast %in% c("Both 501c3", 
-                    "Both Non-501c3", 
-                    "Both Local", 
-                    "Both Regional",
-                    "Same Capacity",
-                    "Ego Periperal EJ: Alter Periperal EJ",
-                    "Ego Key Work Area EJ: Alter Key Work Area EJ", 
-                    "Ego Central EJ: Alter Central EJ") ~ "Homophily",
-    contrast %in% c("501c3 Seeking Non-501c3", 
-                    "Non-501c3 Seeking 501c3", 
-                    "Local Seeking Regional", 
-                    "Regional Seeking Local", 
-                    "Lower Capacity Seeking Higher",
-                    "Higher Capacity Seeking Lower",
-                    "Ego Central EJ: Alter Key Work Area EJ",
-                    "Ego Periperal EJ: Alter Central EJ", 
-                    "Ego Key Work Area EJ: Alter Central EJ",
-                    "Ego Key Work Area EJ: Alter Periperal EJ",
-                    "Ego Central EJ: Alter Periperal EJ",
-                    "Ego Periperal EJ: Alter Key Work Area EJ",
-                    "Ego Periperal EJ: Alter No EJ",
-                    "Ego Key Work Area EJ: Alter No EJ", 
-                    "Ego Central EJ: Alter No EJ") ~ "Heterophily"
-  )) %>%
-  mutate(hyp_type = factor(hyp_type, levels = c("Homophily", "Heterophily"))) 
+  ))) 
 
 
-contrast_homophily <- coefs_cat %>%
-  filter(hyp_type == "Homophily") %>%
-  ggplot(., aes(reorder(contrast, -estimate), estimate, color = hyp_type, shape = variable)) +
+contrast_ejfactor <- coefs_cat %>%
+  ggplot(., aes(reorder(contrast, -estimate), estimate)) +
   geom_point(position = position_dodge(width=.75)) + 
   geom_pointinterval(aes(ymin = .lower, ymax = .upper), position=position_dodge(width=.75), height=0) +  
   geom_hline(yintercept = 0) +
@@ -1298,99 +1317,52 @@ contrast_homophily <- coefs_cat %>%
                      guide = guide_legend(reverse = TRUE, ncol = 3)) +
   labs(x = "", y = "Coefficient", color = "Hypothesis", shape = "Variable") +
   theme_bw() +
-  theme(legend.position = "bottom", legend.title = element_text(size = 12), axis.text.x = element_text(size = 12, angle = 45, vjust = 1, hjust=1), axis.text.y = element_text(size = 12), legend.text = element_text(size = 12))
-
-contrast_homophily
-#ggsave("plots/coefs_cat_homophily.png", contrast_homophily, width = 9, height = 6, dpi = 600, units = "in")
-
-contrast_heterophily <- coefs_cat %>%
-  filter(hyp_type == "Heterophily") %>%
-  ggplot(., aes(reorder(contrast, -estimate), estimate, color = hyp_type, shape = variable)) +
-  geom_point(position = position_dodge(width=.75)) + 
-  geom_pointinterval(aes(ymin = .lower, ymax = .upper), position=position_dodge(width=.75), height=0) +  
-  geom_hline(yintercept = 0) +
-  scale_color_manual(values = c("#657D94"),
-                     guide = guide_legend(reverse = TRUE, ncol = 3)) +
-  labs(x = "", y = "Coefficient", color = "Hypothesis", shape = "Variable") +
-  theme_bw() +
   theme(legend.position = "bottom", legend.title = element_text(size = 12), axis.text.x = element_text(size = 12, angle = 90, vjust = 1, hjust=1), axis.text.y = element_text(size = 12), legend.text = element_text(size = 12))
 
-contrast_heterophily
-
-#ggsave("plots/coefs_heterophily.png", contrast_heterophily, width = 10, height = 7, dpi = 600, units = "in")
-
+contrast_ejfactor
+ggsave("plots/coefs_ejfactor.png", contrast_ejfactor, width = 10, height = 6, dpi = 600, units = "in")
 
 ### b. Loo Comparison Table ----
 loo(m_re)
 loo(m_bd)
-loo(m_full)
+loo(m_full_refined)
 
 loo(m_full_c)
 loo(m_full_s)
 
 ### c. No ECJW Model Plot ----
-# coefs_full <- gather_coefs(m_full, "Full Model")
-# coefs_full_no_ejcw <- gather_coefs(m_full_subset, "Full Model without EJCW")
-# 
-# combined_coefs_plot2 <- combine_coefs_plot2(coefs_full, coefs_full_no_ejcw)
-# 
-# combined_coefs_plot2
-# 
-# ggsave("plots/coefs_full_model_no_ejcw_comp.png", combined_coefs_plot2, width = 9, height = 10, dpi = 600, units = "in")
+coefs_full <- gather_coefs(m_full_refined, "Full Model")
+coefs_full_no_ejcw <- gather_coefs(m_full_subset, "Full Model without EJCW")
+
+combined_coefs_plot2 <- combine_coefs_plot2(coefs_full, coefs_full_no_ejcw)
+
+combined_coefs_plot2
+
+ggsave("plots/coefs_full_model_no_ejcw_comp.png", combined_coefs_plot2, width = 9, height = 10, dpi = 600, units = "in")
 
 ### e. VPC Table ----
-sjPlot::tab_model(m_ego, m_ego_alter, m_full_ego, m_full, dv.labels = c("VPC - Ego", "VPC - Ego + Alter", "Full Model - Ego", "Full Model - Ego + Alter"), file = "outputs/vpc_full_model_comp_table.doc")
+sjPlot::tab_model(m_ego, m_ego_alter, m_full_ego, m_full_refined, dv.labels = c("VPC - Ego", "VPC - Ego + Alter", "Full Model - Ego", "Full Model - Ego + Alter"), file = "outputs/vpc_full_model_comp_table.doc")
 
 ## 2. Model Diagnostics ----
 ### a. Posterior Predictive Check ----
-ppc <- pp_check(m_full, type = "dens_overlay", ndraws = 100)
+ppc <- pp_check(m_full_refined, type = "dens_overlay", ndraws = 100)
 ggsave("plots/ppc.png", ppc, width = 6, height = 4, dpi = 600, units = "in")
 
 ### b. Trace Plots ----
-trace <- plot(m_full)
+trace <- plot(m_full_refined)
 ggsave("plots/trace_plots.png", trace, width = 6, height = 4, dpi = 600, units = "in")
 
-### c. VIF ----
-# Variable inflation factor
-## tells you how bad your variance
-## probably not a problem for category
-## if greater than 5 then BAD, 4 is not great and less is one is you are totally uncorrelated
-# Cor matrix
-m_df_num <- m_df %>% select() 
-
-# LME4 model
-library(lme4)
-f_m_full <- glm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + ego_np_501c3 + alter_np_501c3 + np_match + ego_ej_mission + alter_ej_mission + ej_diff_cat + count_ego_issues + count_alter_issues + i_match + ego_local + alter_local + geo_diff_cat + distance_n, data = m_df, family = binomial(link = "logit"))
-
-ld.vars <- attributes(alias(f_m_full)$Complete)$dimnames[[1]]
-ld.vars
-# "np_matchhigher", "np_matchno_np_homophily", "geo_diff_catsmaller", "geo_diff_catbigger"
-
-# remove aliased coefficients
-f_m_full2 <- glm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + np_match + ego_ej_mission + alter_ej_mission + ej_diff_cat + count_ego_issues + count_alter_issues + i_match + geo_diff_cat + distance_n, data = m_df, family = binomial(link = "logit"))
-
-# VIF: let's see how much correlation is happening!
-library(car)
-vif_values <- vif(f_m_full2)
-vif_values
-## EJ mission is problematic.. so just keep relational for that too
-
-f_m_full3 <- glm(dv ~ ego_capacity_n + alter_capacity_n + c_diff_cat + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + np_match + ej_diff_cat + count_ego_issues + count_alter_issues + i_match + geo_diff_cat + distance_n, data = m_df, family = binomial(link = "logit"))
-
-# Do the test again
-vif_values <- vif(f_m_full3)
-vif_values
 
 # Now everything looks good
 
 ## 3. Prior Selection ----
 loo(m_full_c)
 loo(m_full_s)
-loo(m_full)
+loo(m_full_refined)
 
 coefs_c <- gather_coefs(m_full_c, "Cauchy")
 coefs_s<- gather_coefs(m_full_s, "Horseshoe")
-coefs_full <- gather_coefs(m_full, "Normal")
+coefs_full <- gather_coefs(m_full_refined, "Normal")
 
 combined_coefs_plot <- combine_coefs_plot3(coefs_c, coefs_s, coefs_full)
 

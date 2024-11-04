@@ -885,10 +885,26 @@ m_full_subset <- readRDS("outputs/m_full_subset.rds")
 m_re <- readRDS("outputs/m_re.rds")
 m_bd <- readRDS("outputs/m_bd.rds")
 m_full <- readRDS("outputs/m_full.rds")
+m_full_refined <- readRDS("outputs/m_full_refined.rds")
 m_full_ejfactor <- readRDS("outputs/m_full_ejfactor.rds")
 
 ### Coefficient Plots ----
-#### a. Numerical predictors ----
+#### a. Summary predictor plot -----
+coefs_summary <- gather_coefs(m_full_refined, "All Predictors")
+coefs_summ_plot <- coefs_summary %>%
+  ggplot(., aes(value, par, color = variable)) +
+  geom_point(position = position_dodge(width=.75)) + 
+  geom_pointinterval(aes(xmin = .lower, xmax = .upper), position=position_dodge(width=.75), height=0) + 
+  geom_vline(xintercept = 0) +
+  labs(x = "Coefficient", y = "", color = "Hypothesis", shape = "Variable") +
+  theme_bw() +
+  theme(legend.position = "bottom", legend.title = element_text(size = 12), axis.text.x = element_text(size = 12), axis.text.y = element_text(size = 12), legend.text = element_text(size = 12))
+
+coefs_summ_plot
+
+
+#### b. Num + Cat predictor (contrasts) plot ----
+##### a. Numerical predictors ----
 coefs_num <- gather_coefs_numeric(m_full_refined, "Numeric Predictors")
 
 coefs_num_plot <- coefs_num %>%
@@ -910,7 +926,7 @@ coefs_num_plot
 
 #ggsave("plots/coefs_numeric.png", coefs_num_plot, width = 9, height = 5, dpi = 600, units = "in")
 
-#### b. Categorical predictors ----
+##### b. Categorical predictors ----
 # use emmeans to calculate intervals:
 # The basic sequence is that you create the comparison with emmeans, then calculate contrasts (with method='eff' to calculate the difference from average and adjust='bonferroni' for the Bonferroni method of correcting for multiple testing). Then since you want the confidence interval instead of the estimates, you pass the result to the confit function. - Wes Brooks help on this 
 # columns
@@ -966,7 +982,8 @@ coefs_cat <- contrasts %>%
 # Full coef dataframe
 coefs <- rbind(coefs_num, coefs_cat)
 
-#### c. Resource Exchange Coefs -----
+#### Plots -----
+#### a. Resource Exchange Coefs -----
 coefs_re_plot <- coefs %>% 
   filter(mode == "Resource Exchange") %>%
   mutate(ordering = as.integer(factor(variable)) + as.integer(fct_rev(factor(hyp_type))) + value) %>%
@@ -995,7 +1012,7 @@ coefs_re_plot
 
 ggsave("plots/coefs_re.png", coefs_re_plot, width = 10, height = 5, dpi = 600, units = "in")
 
-#### d. Boundary Definition Coefs -----
+#### b. Boundary Definition Coefs -----
 coefs_bd_plot <- coefs %>% 
   filter(mode == "Boundary Definition") %>%
   mutate(ordering = as.integer(factor(variable)) + as.integer(fct_rev(factor(hyp_type))) + value) %>%

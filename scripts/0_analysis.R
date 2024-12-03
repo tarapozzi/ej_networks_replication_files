@@ -17,6 +17,13 @@ library(tidybayes) # model results interpretation
 library(emmeans)
 source("scripts/1_functions.R")
 
+# Upload data (skip if you want to recreate datasets) -------------------------------------
+## Read in attribute data for each organization in the analysis
+nodelist <- read.csv("data/nodelist.csv")
+
+## Read in edgelist for ego networks
+edgelist <- read.csv("data/edgelist.csv")
+
 
 # A. Case Study Plot ---------------------------------------------------------
 ## Legal Delta 
@@ -118,11 +125,6 @@ tmap_save(case.study.plot, "plots/case_study_plot.png", width = 5, height = 7, d
 
 
 # B. Raw Data -------------------------------------------------------------
-## Read in attribute data for each group in the analysis
-nodelist <- read.csv("data/nodelist.csv")
-
-## Read in edgelist for ego networks
-edgelist <- read.csv("data/edgelist.csv")
 
 ## Descriptive Plots for Case Study Section ----
 collaborative_list <- data.frame(org = c("California Environmental Justice Alliance", "ClimatePlan", "Capital Region Climate Readiness Collaborative", "Edge Collaborative", "Environmental Council of Sacramento", "Environmental Justice Coalition for Water", "RISE Stockton Coalition", "Delta Adapts", "Regional Water Forum", "San Joaquin Regional Climate Collaborative", "Yolo County Climate Action Commission", "Sacramento Environmental Justice Collaborative Governance Committee", "Stockton AB 617 Steering Committee", "Stockton Rising", "San Joaquin Healthy Neighborhoods Collaborative", "Delta Tribal Environmental Coalition"), year = c(2001, 2007, 2013, 2021, 1971, 1999, 2018, 2018, 2000, 2022, 2020, 2018, 2019, 2022, 2020, 2023), Type = "Collaborative")
@@ -662,32 +664,40 @@ net <- network(x = edgelist_names,
 # Attributes
 net %v% 'degree' <- sna::degree(net)
 
-egos <- edgelist_names %>% select(ego) %>% distinct() %>% pull() 
-alters <- edgelist_names %>% select(alter) %>% distinct() %>% pull()
-both <- intersect(egos, alters)
-
 net %v% 'position' <- ifelse(net %v% 'vertex.names' %in% egos, 1, 2)
 
 net %v% 'labels' <- ifelse(net %v% 'vertex.names' %in% egos & net %v% 'position' == 1, net %v%  'vertex.names', '')
 
+# figure out which orgs where named in multiple ego networks
 alter_overlaps <- edgelist_names %>% select(alter) %>% group_by(alter) %>% filter(n() > 1) %>% distinct() %>% pull() # 17 overlapping alters 
 
-net %v% 'overlaps' <- ifelse(net %v% 'vertex.names' %in% both, # 9 overlapping 
+# out of those orgs, which ones were also an ego in the analysis
+egos <- edgelist_names %>% select(ego) %>% distinct() %>% pull() 
+alters <- edgelist_names %>% select(alter) %>% distinct() %>% pull()
+both <- intersect(egos, alters)
+ego_alter_overlaps <- intersect(alter_overlaps, both)
+
+# the remaining are just named multiple times as an alter
+just_alter_overlaps <- setdiff(alter_overlaps, both)
+
+net %v% 'overlaps' <- ifelse(net %v% 'vertex.names' %in% ego_alter_overlaps, # 7 overlapping 
                              1, 
-                             ifelse(net %v% 'vertex.names' %in% alter_overlaps, 2, 0))  
+                             ifelse(net %v% 'vertex.names' %in% just_alter_overlaps, 2, 0))  
+
 
 
 # Plot
-set.seed(1)
+set.seed(3)
 net_plot <- ggraph(net, layout = 'fr') +
-  geom_edge_link(alpha = 0.5, color = "gray70", show.legend = FALSE) +
+  geom_edge_link(alpha = 0.5, color = "black", show.legend = FALSE) +
   geom_node_point(aes(size = as.numeric(degree), color = as.character(overlaps), shape = as.character(position)), alpha = .9) +
+  scale_size_continuous(range = c(2, 7)) +
   scale_shape_manual(breaks = c(1, 2), values = c(17, 18), labels = c("Ego", "Alter")) +
-  scale_color_manual(breaks = c(0,1,2), values = c("#CBC9E2", "#00BFC4", "#54278F"), labels = c("No Overlaps", "Alter-Alter Overlap", "Ego-Overlap")) +
+  scale_color_manual(breaks = c(0,1,2), values = c("#00BFC4", "gold", "#54278F"), labels = c("None", "Ego named as \nalter", "Alter named \nmultiple times")) +
   theme_void() +
-  geom_node_text(aes(label = labels, size = as.numeric(degree)), repel = T, max.overlaps = Inf) +
-  theme(legend.position = "bottom", legend.text = element_text(size = 14)) + 
-  guides(size = guide_legend(title = "Degree"), shape = guide_legend(title = "Position"), color = guide_legend(title = "Shared Alter")) 
+  geom_node_text(aes(label = labels), size = 4, bg.color = "grey", repel = T, max.overlaps = Inf) +
+  theme(legend.position = "right", legend.text = element_text(size = 12)) + 
+  guides(size = guide_legend(title = "Degree"), shape = guide_legend(title = "Position"), color = guide_legend(title = "Overlap")) 
 
 net_plot
 

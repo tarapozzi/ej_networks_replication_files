@@ -697,9 +697,10 @@ net_plot <- ggraph(net, layout = 'fr') +
   theme_void() +
   geom_node_text(aes(label = labels), size = 4, bg.color = "grey", repel = T, max.overlaps = Inf) +
   theme(legend.position = "right", legend.text = element_text(size = 12)) + 
-  guides(size = guide_legend(title = "Degree"), shape = guide_legend(title = "Position"), color = guide_legend(title = "Overlap")) 
+  guides(size = "none", shape = guide_legend(title = "Position"), color = guide_legend(title = "Overlap")) 
 
 net_plot
+
 
 ggsave("plots/full_network.png", net_plot, width = 10, height = 8, units = "in")
 
@@ -965,19 +966,24 @@ coefs_re_plot <- coefs %>%
     par == "Higher Capacity Seeking Lower" ~ 4.1, 
     par == "Lower Capacity Seeking Higher" ~ 4.2,
     par == "Collaborative Membership Overlap" ~ 6, 
+    par == "Ego Capacity" ~ 6.1,
+    par == "Ego No. of Collaboratives" ~ 6.2, 
+    par == "Alter Capacity" ~ 6.3,
+    par == "Alter No. of Collaboratives" ~ 6.4,
     TRUE ~ ordering
   )) %>%
   mutate(par = fct_reorder(par, ordering,  .desc = T)) %>%
-  ggplot(., aes(value, par, color = variable, shape = hyp_type)) +
+  ggplot(., aes(value, par, color = variable, shape = hyp_type, alpha = hyp_type)) +
   geom_point(position = position_dodge(width=.75)) + 
   geom_pointinterval(aes(xmin = .lower, xmax = .upper), position=position_dodge(width=.75), height=0) + 
   geom_vline(xintercept = 0) +
+  scale_alpha_discrete(range = c(0.4, 1)) +
   scale_color_manual(values = c("#88694B",
                                 "#657D94",
                                 "#35483F"),
                      guide = guide_legend(reverse = TRUE, ncol = 3)) +
   labs(x = "Coefficient", y = "", color = "Variable", shape = "Type") +
-  guides(color = guide_legend(ncol = 1), shape = guide_legend(ncol = 1)) + 
+  guides(alpha = "none", color = guide_legend(ncol = 1), shape = guide_legend(ncol = 1)) + 
   theme_bw() +
   theme(legend.position = "right", legend.title = element_text(size = 12), axis.text.x = element_text(size = 12), axis.text.y = element_text(size = 12), legend.text = element_text(size = 12))
 
@@ -991,22 +997,23 @@ coefs_bd_plot <- coefs %>%
   mutate(ordering = as.integer(factor(variable)) + as.integer(fct_rev(factor(hyp_type))) + value) %>%
   mutate(ordering = case_when(
     par == "Spatial Distance" ~ 5, 
-    par == "Ego No. of Issues" ~ 3.3, 
-    par == "Alter No. of Issues" ~ 3.29,
     par == "Both Local" ~ 3.6,
+    par == "Ego No. of Issues" ~ 5.1, 
+    par == "Alter No. of Issues" ~ 5.2,
     TRUE ~ ordering
   )) %>%
   mutate(par = fct_reorder(par, ordering,  .desc = T)) %>%
-  ggplot(., aes(value, par, color = variable, shape = hyp_type)) +
+  ggplot(., aes(value, par, color = variable, shape = hyp_type, alpha = hyp_type)) +
   geom_point(position = position_dodge(width=.75)) + 
   geom_pointinterval(aes(xmin = .lower, xmax = .upper), position=position_dodge(width=.75), height=0) + 
   geom_vline(xintercept = 0) +
+  scale_alpha_discrete(range = c(0.4, 1)) +
   scale_color_manual(values = c("#88694B",
                                 "#657D94",
                                 "#35483F"),
                      guide = guide_legend(reverse = TRUE, ncol = 3)) +
   labs(x = "Coefficient", y = "", color = "Variable", shape = "Type") +
-  guides(color = guide_legend(ncol = 1), shape = guide_legend(ncol = 1)) + 
+  guides(alpha = "none", color = guide_legend(ncol = 1), shape = guide_legend(ncol = 1)) + 
   theme_bw() +
   theme(legend.position = "right", legend.title = element_text(size = 12), axis.text.x = element_text(size = 12), axis.text.y = element_text(size = 12), legend.text = element_text(size = 12))
 

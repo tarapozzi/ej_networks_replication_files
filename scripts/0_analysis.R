@@ -327,24 +327,22 @@ d <- d %>%
 
 #### Resource capacity ----
 # In order to calc capacity, need to combine the financial resources into one variable and then normalize financial resources & staff. Finally, average these two values to get one normalized capacity measure
+capacity_n_calculation <- nodelist %>%
+  mutate(financials_n = normalize(rev_pp22 + assets_pp22),
+         staff_n = normalize(staff)) %>%
+  group_by(ID) %>%
+  mutate(capacity_n = mean(c(financials_n, staff_n), na.rm = TRUE)) %>%
+  mutate(capacity_n = ifelse(ID %in% c("G23", "G27", "G30"), 0, capacity_n)) %>%
+  select(ID, capacity_n) %>%
+  ungroup()
+  
 d <-  d %>%
-  mutate(ego_financials = ego_rev_pp22 + ego_assets_pp22, 
-         alter_financials = alter_rev_pp22 + alter_assets_pp22) %>% 
-  mutate(ego_financials_n = normalize(ego_financials), 
-         alter_financials_n = normalize(alter_financials),
-         ego_staff_n = normalize(ego_staff),
-         alter_staff_n = normalize(alter_staff)) %>%
-  group_by(ego, alter) %>% # group by each ego-alter tie
-  mutate(ego_capacity_n = mean(c(ego_financials_n, ego_staff_n), na.rm = TRUE), 
-         alter_capacity_n = mean(c(alter_financials_n, alter_staff_n), na.rm = TRUE)) %>% # combined capacity measure 
-  ungroup() %>%
-  mutate(alter_capacity_n = case_when(
-    alter %in% c("G23", "G27", "G30") ~ 0, # these groups did not have any financial or staffing information available & had minimal online presence. Assume, these groups have the lowest capacity possible.
-    TRUE ~ alter_capacity_n
-  )) %>%
-  group_by(ego, alter) %>%
+  left_join(., capacity_n_calculation, by = c("ego" = "ID")) %>%
+  rename(ego_capacity_n = capacity_n) %>%
+  left_join(., capacity_n_calculation, by = c("alter" = "ID")) %>%
+  rename(alter_capacity_n = capacity_n) %>%
   mutate(c_diff_n = alter_capacity_n - ego_capacity_n, # capacity difference (numerical)
-         c_diff_cat = ifelse(c_diff_n > 0, "higher", ifelse(c_diff_n == 0, "match", "lower"))) # capacity different (categorical)
+         c_diff_cat = ifelse(c_diff_n > 0, "higher", ifelse(c_diff_n == 0, "match", "lower"))) 
 
 ### Identity ----
 #### EJ commitment ----
@@ -450,7 +448,8 @@ network_bounding <- network_bounding %>%
   st_as_sf() %>% 
   group_by(ID) %>%
   st_transform(geometry, crs = 4326) %>%
-  summarise(geometry = st_union(geometry)) # chose this crs as it is very common
+  summarise(geometry = st_union(geometry)) %>% # chose this crs as it is very common
+  ungroup()
 
 ## check validity of geometry 
 st_is_valid(network_bounding)
@@ -471,7 +470,8 @@ bounded_d <- bounded_d %>%
   group_by(ego, alter) %>%
   mutate(geo_overlap = any(st_intersects(ego_geom, alter_geom, sparse = FALSE))) %>% # gives TRUE if two polygons overlap and FALSE if not, "sparse" makes it so that it returns a logical value, and "any" allows anytime it intersects to count so sometimes it might overlap more than once and the overlap could just be borders touching
   filter(geo_overlap == TRUE | collab == 1) %>% # keep observations with overlap OR if a pair has an observed tie
-  mutate(touch = as.integer(st_touches(ego_geom, alter_geom)))
+  mutate(touch = as.integer(st_touches(ego_geom, alter_geom))) %>%
+  ungroup()
 
 ## Check if all the observed ties are still in the dataframe
 bounded_d %>% filter(collab == 1) %>% select(ego, alter) %>% unique() %>% nrow() # 110 rows
@@ -493,15 +493,17 @@ class(bounded_d)
 
 ## select variables that will be included in model 
 bounded_d <- bounded_d %>%
-  select(ego, alter, dv, ego_capacity_n, alter_capacity_n, ej_diff, c_diff_n, c_diff_cat, count_ego_collaboratives, count_alter_collaboratives, overlap_collab,  ego_np_501c3, alter_np_501c3, np_match, ego_ej_mission, alter_ej_mission, ej_diff_cat, count_ego_issues, count_alter_issues, i_match, ego_local, alter_local, geo_diff_cat, distance)
+  select(ego, alter, dv, ego_capacity_n, alter_capacity_n, ej_diff, c_diff_n, c_diff_cat, count_ego_collaboratives, count_alter_collaboratives, overlap_collab,  ego_np_501c3, alter_np_501c3, np_match, ego_ej_mission, alter_ej_mission, ej_diff_cat, count_ego_issues, count_alter_issues, i_match, ego_local, alter_local, geo_diff_cat, distance) %>%
+  mutate(distance = as.numeric(distance)) # make numeric instead of a matrix 
 
 ## 5. Export model data ----
 write.csv(bounded_d, "outputs/model_dataset.csv")
 
-# C. Model -----
+# C. Analysis -----
+# Model Data ----
 m_df <- read.csv("outputs/model_dataset.csv") 
-
 m_df <- m_df %>%
+  ungroup() %>%
   mutate(c_diff_cat = factor(c_diff_cat, levels = c("match", "lower", "higher")), 
          ej_diff_cat= factor(ej_diff_cat, levels = c("match", "lower", "higher")), 
          geo_diff_cat = factor(geo_diff_cat, levels = c("local_match", "regional_match", "smaller", "bigger")),
@@ -509,13 +511,12 @@ m_df <- m_df %>%
          ego_local = factor(ego_local, levels = c("local", "regional")), 
          alter_local = factor(alter_local, levels = c("local", "regional")), 
          distance_n = normalize(distance)) %>%
-  select(-X, -distance) # remove ID and un-normalized distance
-
+  select(-distance) # remove ID and un-normalized distance
 
 # Descriptive Results -----------------------------------------------------
-## Table 2 ----
+## 1. Table 2 ----
 ## Code for comparison table of independent variables across egos, alters, potential ego-alter ties, and observed ego-alter ties
-## 1. Egos ----
+### a. Egos ----
 ego_summary <- m_df %>%
   select(ego, ego_np_501c3, ego_capacity_n, count_ego_collaboratives, ego_ej_mission, count_ego_issues) %>%
   unique() %>%
@@ -531,15 +532,14 @@ ego_cat_summary <- m_df %>%
   mutate(porp = n/sum(n))
 ego_cat_summary
 
-## 2. Observed Alters ----
+### b. Observed Alters ----
 actual_alters <- edgelist %>% select(alter) %>% distinct() %>% pull()
+
 alter_summary <- m_df %>%
   filter(alter %in% actual_alters) %>%
   select(alter, alter_np_501c3, alter_capacity_n, count_alter_collaboratives, alter_ej_mission, count_alter_issues) %>%
   unique() %>%
-  summary()%>%
-  ungroup() %>%
-  mutate(porp = n/sum(n))
+  summary()
 alter_summary
 
 alter_cat_summary <- m_df %>%
@@ -552,7 +552,7 @@ alter_cat_summary <- m_df %>%
   mutate(porp = n/sum(n))
 alter_cat_summary
 
-## 3. Potential ego-alter ----
+### c. Potential ego-alter ----
 pot_pair_summary <- m_df %>%
   filter(dv == 0) %>%
   select(overlap_collab, i_match, distance_n) %>%
@@ -566,8 +566,9 @@ m_df %>%
   select(ego, alter, c_diff_cat) %>%
   unique() %>%
   group_by(c_diff_cat) %>%
+  count() %>%
   ungroup() %>%
-  mutate(porp = n/sum(n))
+  mutate(prop = n/sum(n))
 # higher: means that alter has higher capacity than ego OR ego has lower capacity than alter
 # lower: means that alter has lower capacity than ego OR ego has higher capacity than alter
 
@@ -595,7 +596,7 @@ m_df %>%
   group_by(geo_diff_cat) %>%
   count()
 
-## 4. Observed ego-alter ties -----
+### d. Observed ego-alter ties -----
 pair_summary <- m_df %>%
   filter(dv == 1) %>%
   select(overlap_collab, i_match, distance_n) %>%
@@ -642,7 +643,7 @@ m_df %>%
   ungroup() %>%
   mutate(porp = n/sum(n))
 
-## Network figure ----
+## 2. Network figure ----
 # Replace anonymous IDs with names 
 anonymous_key <- read.csv("data/anonymous_key.csv")
 edgelist_names <- edgelist %>%
@@ -700,9 +701,8 @@ net_plot <- ggraph(net, layout = 'fr') +
   guides(size = "none", shape = guide_legend(title = "Position"), color = guide_legend(title = "Overlap")) 
 
 net_plot
-
-
 ggsave("plots/full_network.png", net_plot, width = 10, height = 8, units = "in")
+
 
 
 ## Inferential Results -----
@@ -760,7 +760,7 @@ vif_values <- vif(f_m_full3)
 vif_values # looks good!
 
 ### GVIF Refined Models ----
-### a. Resource Exchange Model (ego + alter RE)----
+### b. Resource Exchange Model (ego + alter RE)----
 set.seed(1992) # set starting seed to make results replicable
 m_re <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + factor(np_match) + (1|ego) + (1|alter), 
             data = m_df, 
@@ -775,7 +775,7 @@ m_re <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + count_
             control = list(adapt_delta = 0.99))
 
 
-### b. Boundary Definition Model (ego + alter RE)----
+### c. Boundary Definition Model (ego + alter RE)----
 set.seed(1992)
 m_bd <- brm(dv ~  factor(ej_diff_cat) + count_ego_issues + count_alter_issues + i_match + factor(geo_diff_cat) + distance_n + (1|ego) + (1|alter), 
             data = m_df, 
@@ -790,7 +790,7 @@ m_bd <- brm(dv ~  factor(ej_diff_cat) + count_ego_issues + count_alter_issues + 
             #file = "outputs/m_bd", # save your model output
             control = list(adapt_delta = 0.99)) 
 
-### c. Full Model (ego only)----
+### d. Full Model (ego only)----
 set.seed(1992)
 m_full_ego <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + factor(np_match) + factor(ej_diff_cat) + count_ego_issues + count_alter_issues + i_match + factor(geo_diff_cat) + distance_n + (1|ego), 
                   data = m_df,
@@ -804,7 +804,7 @@ m_full_ego <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + 
                   file = "outputs/m_full_ego",
                   control = list(adapt_delta = 0.99))
 
-## c. Full Model - refined after VIF test
+### e. Full Model refined after VIF test ----
 set.seed(1992)
 m_full_refined <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + count_ego_collaboratives + count_alter_collaboratives + overlap_collab + factor(np_match) + factor(ej_diff_cat) + count_ego_issues + count_alter_issues + i_match + factor(geo_diff_cat) + distance_n + (1|ego) + (1|alter), 
               data = m_df, 
@@ -854,7 +854,7 @@ m_full_c <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + co
               file = "outputs/m_full_c",
               control = list(adapt_delta = 0.99))
 
-### d. Selection ----
+### c. Selection ----
 loo_compare(loo(m_full), loo(m_full_s), loo(m_full_c))
 
 
@@ -948,10 +948,10 @@ m_full_ejfactor <- readRDS("outputs/m_full_ejfactor.rds")
 ## Coefficient Plots ----
 ### a. Figures 6-7: Coefficient Plots ----
 #### i. Numerical predictors ----
-coefs_num <- gather_coefs_numeric(m_full_refined, "Numeric Predictors")
+coefs_num <- gather_coefs_numeric(m_full_refined_test, "Numeric Predictors")
 
 #### ii. Categorical predictors ----
-coefs_cat <- gather_coefs_categorical(m_full_refined, "Categorical Predictors")
+coefs_cat <- gather_coefs_categorical(m_full_refined_test, "Categorical Predictors")
 
 # full coef dataframe
 coefs <- rbind(coefs_num, coefs_cat)
@@ -1195,7 +1195,36 @@ ggsave("plots/bd_ame.png", bd_plots, width = 10, height = 6, dpi = 600, units = 
 
 # D. Supplemental Information ----
 ## 1. Additional Descriptive Information ----
-### a. Alter and Ego Degree Plot ----
+### a. Table A-1 ----
+ego_summary <- m_df %>%
+  filter(dv == 1) %>% # just the observe ego-alter pairs
+  left_join(., anonymous_key, by = c("ego" = "ID")) %>%
+  select(-ego) %>%
+  group_by(org, ego_np_501c3, ego_capacity_n, count_ego_collaboratives, ego_ej_mission, count_ego_issues, ego_local) %>%
+  summarize(alter_np_501c3 = round(sum(alter_np_501c3)/sum(dv == 1), 2),
+            alter_capacity_n = round(mean(alter_capacity_n), 2),
+            count_alter_collaboratives = round(mean(count_alter_collaboratives), 2),
+            alter_ej_mission = round(mean(alter_ej_mission), 2),
+            count_alter_issues = round(mean(count_alter_issues), 2),
+            distance = mean(distance)*0.000621371) %>% # convert to miles
+  rename(Ego = org, 
+         `Ego 501c3 Status` = ego_np_501c3, 
+         `Ego Capacity` = ego_capacity_n, 
+         `Ego Collaboratives` = count_ego_collaboratives, 
+         `Ego EJ Commitment` = ego_ej_mission, 
+         `Ego Issue Diversity` = count_ego_issues, 
+         `Ego Geographic Scope` = ego_local, 
+         `Alter 501c3 Status` = alter_np_501c3,
+         `Alter Capacity` = alter_capacity_n,
+         `Alter Collaboratives` = count_alter_collaboratives,
+         `Alter EJ Commitment` = alter_ej_mission,
+         `Alter Issue Diversity` = count_alter_issues,
+         `Distance (mi)` = distance
+         )
+
+write.csv(ego_summary, "outputs/table_a1.csv")   
+
+### b. Alter and Ego Degree Plot ----
 ego_dist <- m_df %>%
   filter(dv == 1) %>%
   group_by(ego) %>%

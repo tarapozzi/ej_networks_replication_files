@@ -1,4 +1,4 @@
-## normalize data
+## function to normalize data
 normalize <- function(x){(x - min(x, na.rm = TRUE))/(max(x, na.rm = TRUE) - min(x, na.rm = TRUE))}
 
 # gather coefficient estimates from model results for numerical predictors
@@ -9,7 +9,7 @@ gather_coefs_numeric <-  function(m, name) {
     gather_variables() %>%
     filter(.variable %in% variables) %>% 
     dplyr:: rename(par=.variable, value=.value) %>%
-    median_qi(.width = c(.89, .5))%>%
+    median_qi(.width = c(.95, .5))%>%
     mutate(hyp_type = case_when(
       par == "b_alter_capacity_n" ~ "Control", 
       par == "b_ego_capacity_n" ~ "Control",
@@ -99,14 +99,14 @@ contrasts_calc <- function(m, spec) {
            .width = .50) %>%
     rename(.lower = lower.HPD, .upper = upper.HPD)
   
-  d.89 <- emmeans(m, specs = as.formula(paste0("~", spec)), nesting = NULL) %>%
+  d.95 <- emmeans(m, specs = as.formula(paste0("~", spec)), nesting = NULL) %>%
     contrast(method = "eff", adjust = "bonferroni") %>%
-    confint(level = 0.89) %>%
+    confint(level = 0.95) %>%
     mutate(variable = spec,
-           .width = .89) %>%
+           .width = .95) %>%
     rename(.lower = lower.HPD, .upper = upper.HPD)
   
-  d <- rbind(d.50, d.89)
+  d <- rbind(d.50, d.95)
   
   return(d)
 }
@@ -119,14 +119,14 @@ contrasts_calc_ejfactor <- function(spec) {
            .width = .50) %>%
     rename(.lower = lower.HPD, .upper = upper.HPD)
   
-  d.89 <- emmeans(m_full_ejfactor, specs = as.formula(paste0("~", spec)), nesting = NULL) %>%
+  d.95 <- emmeans(m_full_ejfactor, specs = as.formula(paste0("~", spec)), nesting = NULL) %>%
     contrast(method = "eff", adjust = "bonferroni") %>%
-    confint(level = 0.89) %>%
+    confint(level = 0.95) %>%
     mutate(variable = spec,
-           .width = .89) %>%
+           .width = .95) %>%
     rename(.lower = lower.HPD, .upper = upper.HPD)
   
-  d <- rbind(d.50, d.89)
+  d <- rbind(d.50, d.95)
   
   return(d)
 }
@@ -162,11 +162,11 @@ coefs_cat <- contrasts %>%
     contrast == "bigger effect" ~ "Local Seeking Regional",
     contrast == "regional_match effect"  ~ "Both Regional",
     contrast == "match effect" & variable == "c_diff_cat" ~ "Same Capacity",
-    contrast == "lower effect" & variable == "c_diff_cat" ~ "Lower Capacity Seeking Higher",
-    contrast == "higher effect" & variable == "c_diff_cat" ~ "Higher Capacity Seeking Lower",
+    contrast == "lower effect" & variable == "c_diff_cat" ~ "Seeking Lower Capacity",
+    contrast == "higher effect" & variable == "c_diff_cat" ~ "Seeking Higher Capacity",
     contrast == "match effect" & variable == "ej_diff_cat" ~ "Matching EJ Commitment",
-    contrast == "lower effect" & variable == "ej_diff_cat" ~ "More EJ Seeking Less EJ", 
-    contrast == "higher effect" & variable == "ej_diff_cat" ~ "Less EJ Seeking More EJ"
+    contrast == "lower effect" & variable == "ej_diff_cat" ~ "Seeking Less EJ", 
+    contrast == "higher effect" & variable == "ej_diff_cat" ~ "Seeking More EJ"
   )) %>%
   mutate(mode = case_when(
     variable %in% c("geo_diff_cat","ej_diff_cat") ~ "Boundary Definition",
@@ -185,7 +185,6 @@ coefs_cat <- contrasts %>%
          value = estimate) # make it match the numerical dataframe
 }
 
-
 # Coefficient estimates from model results without doing categorical contrasts
 gather_coefs <-  function(m, name) {
   variables <- c("b_ego_capacity_n", "b_alter_capacity_n", "b_factorc_diff_catlower", "b_factorc_diff_cathigher", "b_count_ego_collaboratives", "b_count_alter_collaboratives", "b_overlap_collab", "b_factornp_matchlower", "b_factornp_matchhigher", "b_factornp_matchno_np_homophily", "b_factorej_diff_catlower", "b_factorej_diff_cathigher", "b_count_ego_issues", "b_count_alter_issues",  "b_i_match", "b_factorgeo_diff_catregional_match", "b_factorgeo_diff_catsmaller", "b_factorgeo_diff_catbigger", "b_distance_n")  
@@ -194,7 +193,7 @@ gather_coefs <-  function(m, name) {
     gather_variables() %>%
     filter(.variable %in% variables) %>% 
     dplyr:: rename(par=.variable, value=.value) %>%
-    median_qi(.width = c(.89, .5))%>%
+    median_qi(.width = c(.95, .5))%>%
     mutate(type = case_when(
       par == "b_alter_np_501c3" ~ "Capacity", 
       par == "b_alter_capacity_n" ~ "Capacity", 
@@ -305,19 +304,19 @@ gather_coefs <-  function(m, name) {
       par == "b_alter_ej_mission" ~ "Alter: EJ Commitment", 
       par == "b_distance_n" ~ "Heterophily: Spatial Distance", 
       par == "b_alter_localnonlocal" ~  "Alter Regional Group", 
-      par == "b_factorc_diff_catlower" ~ "Heterophily: Lower Capacity Alter than Ego",
-      par == "b_factorc_diff_cathigher" ~ "Heterophily: Higher Capacity Alter than Ego",
+      par == "b_factorc_diff_catlower" ~ "Heterophily: Seeking Lower Capacity",
+      par == "b_factorc_diff_cathigher" ~ "Heterophily: Seeking Higher Capacity",
       par == "b_i_match_s" ~ "Homophily: Issue Overlap", 
-      par == "b_factorej_diff_catlower" ~ "Heterophily: Lower Alter EJ Commitment than Ego",
-      par == "b_factorej_diff_cathigher" ~ "Heterophily: Higher Alter EJ Commitment than Ego",
+      par == "b_factorej_diff_catlower" ~ "Heterophily: Seeking Less EJ",
+      par == "b_factorej_diff_cathigher" ~ "Heterophily: Seeking More EJ",
       par == "b_count_alter_collaboratives_s" ~ "Alter No. of Collaboratives",
-      par == "b_factorgeo_diff_catlocal_match" ~ "Homophily: Both Local Groups",
-      par == "b_factorgeo_diff_catregional_match" ~ "Homophily: Both Regional Groups",
+      par == "b_factorgeo_diff_catlocal_match" ~ "Homophily: Both Local",
+      par == "b_factorgeo_diff_catregional_match" ~ "Homophily: Both Regional",
       par == "b_count_ego_issues" ~ "Ego No. of Issues", 
       par == "b_count_alter_issues" ~ "Alter No. of Issues",
       par == "b_i_match" ~ "Homophily: No. of Matching Issues", 
-      par == "b_factorgeo_diff_catbigger" ~ "Heterophily: Local Group seeking Regional Group", 
-      par == "b_factorgeo_diff_catsmaller" ~ "Heterophily: Regional Group seeking Local Group", 
+      par == "b_factorgeo_diff_catbigger" ~ "Heterophily: Local Seeking Regional", 
+      par == "b_factorgeo_diff_catsmaller" ~ "Heterophily: Regional Seeking Local", 
       par == "b_ego_localregional" ~ "Ego Regional Group", 
       par == "b_alter_localregional" ~ "Alter Regional Group", 
       par == "b_overlap_collab" ~ "Homophily: Collaborative Membership Overlap", 
@@ -338,8 +337,8 @@ gather_coefs <-  function(m, name) {
       str_detect(par, regex("Group*")) ~ "Geography", 
       str_detect(par, regex("Distance*")) ~ "Geography"
     )) %>%
-    mutate(ordering = -as.integer(factor(variable)) + value) %>%
-    mutate(par = fct_reorder(par, ordering,  .desc = F)) %>%
+    #mutate(ordering = -as.integer(factor(variable)) + value) %>%
+    #mutate(par = fct_reorder(par, ordering,  .desc = F)) %>%
     mutate(model = name)
   return(d)
 } 

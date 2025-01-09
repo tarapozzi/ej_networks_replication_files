@@ -1,6 +1,5 @@
 # This scripts provides the code for creating the model dataset from the raw data, running the analysis, and data visualizations used in the paper and supplementary materials document.
 
-
 # Load libraries and custom functions -------------------------------------
 library(tidyverse)
 library(tidygeocoder) # add coordinates
@@ -24,6 +23,8 @@ nodelist <- read.csv("data/nodelist.csv")
 ## Read in edgelist for ego networks
 edgelist <- read.csv("data/edgelist.csv")
 
+## Organization key
+id_key <- read.csv("data/org_ids.csv")
 
 # A. Case Study Plot ---------------------------------------------------------
 ## Legal Delta 
@@ -121,12 +122,11 @@ case.study.plot <- tm_shape(osm) +
 
 case.study.plot 
 
-tmap_save(case.study.plot, "plots/case_study_plot.png", width = 5, height = 7, dpi = 600, units = "in")
+tmap_save(case.study.plot, "plots/figure_2.png", width = 5, height = 7, dpi = 600, units = "in")
 
 
 # B. Raw Data -------------------------------------------------------------
-
-## Descriptive Plots for Case Study Section ----
+## Exploratory plots to understand examine the raw data
 collaborative_list <- data.frame(org = c("California Environmental Justice Alliance", "ClimatePlan", "Capital Region Climate Readiness Collaborative", "Edge Collaborative", "Environmental Council of Sacramento", "Environmental Justice Coalition for Water", "RISE Stockton Coalition", "Delta Adapts", "Regional Water Forum", "San Joaquin Regional Climate Collaborative", "Yolo County Climate Action Commission", "Sacramento Environmental Justice Collaborative Governance Committee", "Stockton AB 617 Steering Committee", "Stockton Rising", "San Joaquin Healthy Neighborhoods Collaborative", "Delta Tribal Environmental Coalition"), year = c(2001, 2007, 2013, 2021, 1971, 1999, 2018, 2018, 2000, 2022, 2020, 2018, 2019, 2022, 2020, 2023), Type = "Collaborative")
 
 year_plot <- nodelist %>%
@@ -145,8 +145,6 @@ year_plot <- nodelist %>%
   theme(axis.text.x = element_text(size = 12), axis.text.y = element_text(size = 12), legend.text = element_text(size = 12))
 year_plot
 
-ggsave("plots/year_plot.png", year_plot, width = 7, height = 5, dpi = 600, units = "in")
-
 issue_plot <- nodelist %>%
   select(ej_issues) %>%
   separate_rows(ej_issues, sep = ", ") %>%
@@ -164,9 +162,6 @@ issue_plot
 
 year_issue_plot <- cowplot::plot_grid(year_plot, issue_plot, labels = "auto")
 year_issue_plot
-
-#ggsave("plots/year_issue_plot.png", year_issue_plot, width = 10, height = 5, dpi = 600, units = "in")
-
 
 # C. Model Dataset --------------------------------------------------------
 ## 1. Missing Data ----
@@ -189,7 +184,7 @@ d <- d %>%
   mutate(collab = 1) 
 
 ## 3. Independent Variables ----
-### Geography Variables ----
+### a. Geography Variables ----
 #### Distance ----
 ## create two different dfs: one for egos and one for alters & add coordinates for home office & turn into spatial object
 egos <- d %>% select(ego) %>% distinct() %>% pull()
@@ -317,7 +312,7 @@ d <-  d %>%
                                       ifelse(ego_local == "local" & alter_local == "regional", "bigger", "smaller")))) # difference (categorical)
 
 
-### Resources ----
+### b. Resources ----
 #### Non profit status homophily ----
 d <- d %>%
   mutate(np_match = ifelse(ego_np_501c3 == 1 & alter_np_501c3 == 1, "np_homophily",
@@ -342,9 +337,9 @@ d <-  d %>%
   left_join(., capacity_n_calculation, by = c("alter" = "ID")) %>%
   rename(alter_capacity_n = capacity_n) %>%
   mutate(c_diff_n = alter_capacity_n - ego_capacity_n, # capacity difference (numerical)
-         c_diff_cat = ifelse(c_diff_n > 0, "higher", ifelse(c_diff_n == 0, "match", "lower"))) 
+         c_diff_cat = ifelse(c_diff_n > 0, "higher", ifelse(c_diff_n == 0, "match", "lower"))) # if c_diff_n is positive, than alter has MORE capacity than ego (i.e. ego seeking higher capacity), is lower than ego seeking lower capacity
 
-### Identity ----
+### c. Identity ----
 #### EJ commitment ----
 ## Rescale EJ in mission ordered categories to be numerical
 d <- d %>%
@@ -500,7 +495,7 @@ bounded_d <- bounded_d %>%
 write.csv(bounded_d, "outputs/model_dataset.csv")
 
 # C. Analysis -----
-# Model Data ----
+## Model Data ----
 m_df <- read.csv("outputs/model_dataset.csv") 
 m_df <- m_df %>%
   ungroup() %>%
@@ -513,7 +508,7 @@ m_df <- m_df %>%
          distance_n = normalize(distance)) %>%
   select(-distance) # remove ID and un-normalized distance
 
-# Descriptive Results -----------------------------------------------------
+## Descriptive Results -----------------------------------------------------
 ## 1. Table 2 ----
 ## Code for comparison table of independent variables across egos, alters, potential ego-alter ties, and observed ego-alter ties
 ### a. Egos ----
@@ -645,16 +640,15 @@ m_df %>%
 
 ## 2. Network figure ----
 # Replace anonymous IDs with names 
-anonymous_key <- read.csv("data/anonymous_key.csv")
 edgelist_names <- edgelist %>%
-  left_join(., anonymous_key, by = c("ego" = "ID")) %>%
+  left_join(., id_key, by = c("ego" = "ID")) %>%
   select(-ego) %>%
   rename(ego = org) %>%
-  left_join(., anonymous_key, by = c("alter" = "ID")) %>%
+  left_join(., id_key, by = c("alter" = "ID")) %>%
   select(-alter) %>%
   rename(alter = org)
 
-nodelist_names <- anonymous_key %>% select(org)
+nodelist_names <- id_key %>% select(org)
 
 # Create network object
 net <- network(x = edgelist_names, 
@@ -701,7 +695,7 @@ net_plot <- ggraph(net, layout = 'fr') +
   guides(size = "none", shape = guide_legend(title = "Position"), color = guide_legend(title = "Overlap")) 
 
 net_plot
-ggsave("plots/full_network.png", net_plot, width = 10, height = 8, units = "in")
+ggsave("plots/figure_5.png", net_plot, width = 10, height = 8, units = "in")
 
 
 
@@ -787,7 +781,7 @@ m_bd <- brm(dv ~  factor(ej_diff_cat) + count_ego_issues + count_alter_issues + 
             iter = 2000, #actual samples
             chains = 4,
             cores = 4,
-            #file = "outputs/m_bd", # save your model output
+            file = "outputs/m_bd", # save your model output
             control = list(adapt_delta = 0.99)) 
 
 ### d. Full Model (ego only)----
@@ -901,6 +895,7 @@ m_rbcheck_reg_egos <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff
                           control = list(adapt_delta = 0.99))
 
 summary(m_rbcheck_reg_egos)
+
 ### c. Full Model without G43 ----
 ## G43 is an ego that is ALSO a collaborative & therefore is included in the model in multiple ways. This version of the model runs a version of the model data that does not include G43 to see if the results substantively change. 
 m_df_subset <- m_df %>%
@@ -948,10 +943,10 @@ m_full_ejfactor <- readRDS("outputs/m_full_ejfactor.rds")
 ## Coefficient Plots ----
 ### a. Figures 6-7: Coefficient Plots ----
 #### i. Numerical predictors ----
-coefs_num <- gather_coefs_numeric(m_full_refined_test, "Numeric Predictors")
+coefs_num <- gather_coefs_numeric(m_full_refined, "Numeric Predictors")
 
 #### ii. Categorical predictors ----
-coefs_cat <- gather_coefs_categorical(m_full_refined_test, "Categorical Predictors")
+coefs_cat <- gather_coefs_categorical(m_full_refined, "Categorical Predictors")
 
 # full coef dataframe
 coefs <- rbind(coefs_num, coefs_cat)
@@ -989,7 +984,7 @@ coefs_re_plot <- coefs %>%
 
 coefs_re_plot
 
-ggsave("plots/coefs_re.png", coefs_re_plot, width = 10, height = 5, dpi = 600, units = "in")
+ggsave("plots/figure_6.png", coefs_re_plot, width = 10, height = 5, dpi = 600, units = "in")
 
 ##### Boundary Definition Coefs -----
 coefs_bd_plot <- coefs %>% 
@@ -1019,7 +1014,7 @@ coefs_bd_plot <- coefs %>%
 
 coefs_bd_plot
 
-ggsave("plots/coefs_bd.png", coefs_bd_plot, width = 10, height = 5, dpi = 600, units = "in")
+ggsave("plots/figure_7.png", coefs_bd_plot, width = 10, height = 5, dpi = 600, units = "in")
 
 ## Figures 8-9: Posterior Prediction Plots -------
 #### a. RE predictions ----
@@ -1080,13 +1075,12 @@ plot_collab_memb <- ggplot(overlap_collab_ame,
   theme_minimal() +
   theme(legend.position = "none")
 plot_collab_memb
-ggsave("plots/collab_ame.png", plot_collab_memb, width = 6, height = 4, dpi = 600, units = "in")
 
 
 re_plots <- cowplot::plot_grid(plot_np_match, plot_collab_memb, labels = "auto")
 re_plots
 
-ggsave("plots/re_ame.png", re_plots, width = 10, height = 4, dpi = 600, units = "in")
+ggsave("plots/figure_8.png", re_plots, width = 10, height = 4, dpi = 600, units = "in")
 
 #### b. BD predictions ----
 ##### i. Issue match ----
@@ -1113,8 +1107,6 @@ plot_i_match <- ggplot(i_match_ame,
   theme_minimal() +
   theme(legend.position = "none")
 plot_i_match
-
-ggsave("plots/imatch_ame.png", plot_i_match, width = 6, height = 4, dpi = 600, units = "in")
 
 
 ##### ii. Geographic Scale ----
@@ -1167,7 +1159,7 @@ distance_ame %>% median_hdi()
 ###   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 ###    0   11401   69889   62153   95697  260070 
 
-## unnormalize formula: normalized_d * (max_d - min_d) + min_d
+## de-normalize distance formula: normalized_d * (max_d - min_d) + min_d
 (.2 *(260070 - 0) + 0)*0.000621371 #0.000621371: conversion factor from meters to miles
 # 32 miles
 (.4 *(260070 - 0) + 0)*0.000621371 # 64 miles
@@ -1191,40 +1183,11 @@ distance_ame %>% median_hdi()
 bd_plots <- cowplot::plot_grid(plot_i_match, plot_geo, plot_dist, labels = "auto")
 bd_plots
 
-ggsave("plots/bd_ame.png", bd_plots, width = 10, height = 6, dpi = 600, units = "in")
+ggsave("plots/figure_9.png", bd_plots, width = 10, height = 6, dpi = 600, units = "in")
 
 # D. Supplemental Information ----
 ## 1. Additional Descriptive Information ----
-### a. Table A-1 ----
-ego_summary <- m_df %>%
-  filter(dv == 1) %>% # just the observe ego-alter pairs
-  left_join(., anonymous_key, by = c("ego" = "ID")) %>%
-  select(-ego) %>%
-  group_by(org, ego_np_501c3, ego_capacity_n, count_ego_collaboratives, ego_ej_mission, count_ego_issues, ego_local) %>%
-  summarize(alter_np_501c3 = round(sum(alter_np_501c3)/sum(dv == 1), 2),
-            alter_capacity_n = round(mean(alter_capacity_n), 2),
-            count_alter_collaboratives = round(mean(count_alter_collaboratives), 2),
-            alter_ej_mission = round(mean(alter_ej_mission), 2),
-            count_alter_issues = round(mean(count_alter_issues), 2),
-            distance = mean(distance)*0.000621371) %>% # convert to miles
-  rename(Ego = org, 
-         `Ego 501c3 Status` = ego_np_501c3, 
-         `Ego Capacity` = ego_capacity_n, 
-         `Ego Collaboratives` = count_ego_collaboratives, 
-         `Ego EJ Commitment` = ego_ej_mission, 
-         `Ego Issue Diversity` = count_ego_issues, 
-         `Ego Geographic Scope` = ego_local, 
-         `Alter 501c3 Status` = alter_np_501c3,
-         `Alter Capacity` = alter_capacity_n,
-         `Alter Collaboratives` = count_alter_collaboratives,
-         `Alter EJ Commitment` = alter_ej_mission,
-         `Alter Issue Diversity` = count_alter_issues,
-         `Distance (mi)` = distance
-         )
-
-write.csv(ego_summary, "outputs/table_a1.csv")   
-
-### b. Alter and Ego Degree Plot ----
+### a. Alter and Ego Degree Plot ----
 ego_dist <- m_df %>%
   filter(dv == 1) %>%
   group_by(ego) %>%
@@ -1239,7 +1202,7 @@ ego_dist <- m_df %>%
   theme_minimal()
 ego_dist
 
-ggsave("plots/ego_dist.png", ego_dist, width = 6, height = 4, dpi = 600, units = "in")
+ggsave("plots/figure_a3a.png", ego_dist, width = 6, height = 4, dpi = 600, units = "in")
 
 alter_dist <- m_df %>%
   filter(dv == 1) %>%
@@ -1254,17 +1217,17 @@ alter_dist <- m_df %>%
   ylab("Frequency") + 
   theme_minimal()
 alter_dist
-ggsave("plots/alter_dist.png", alter_dist, width = 6, height = 4, dpi = 600, units = "in")
+ggsave("plots/figure_a3b.png", alter_dist, width = 6, height = 4, dpi = 600, units = "in")
 
 org_distributions <- cowplot::plot_grid(ego_dist, alter_dist, labels = "auto")
-
-ggsave("plots/org_distributions.png", org_distributions, width = 8, height = 4, dpi = 600, units = "in")
 
 
 
 ## 2. Model Comparison ----------------------------------------------
 ### a. Coefficient Table ----
 sjPlot::tab_model(m_re, m_bd, m_full_refined, dv.labels = c("Resource Exchange", "Boundary Definition", "Full Model"), file = "outputs/paper_model_table.doc")
+
+sjPlot::tab_model(m_full_refined, m_full_refined2, dv.labels = c( "Full Model", "Full Model 2"), file = "outputs/paper_model_table2.doc")
 
 ### b. EJ Commitment Model with EJ variables as factors ----
 # use emmeans to calculate intervals:
@@ -1328,12 +1291,13 @@ contrast_ejfactor <- coefs_cat %>%
 
 contrast_ejfactor
 
-ggsave("plots/coefs_ejfactor.png", contrast_ejfactor, width = 10, height = 6, dpi = 600, units = "in")
+ggsave("plots/figure_a2.png", contrast_ejfactor, width = 10, height = 6, dpi = 600, units = "in")
 
 ### c. Loo Comparison Table ----
 loo(m_re)
 loo(m_bd)
 loo(m_full_refined)
+
 
 loo(m_full_c)
 loo(m_full_s)
@@ -1344,24 +1308,16 @@ sjPlot::tab_model(m_ego, m_ego_alter, m_full_ego, m_full_refined, dv.labels = c(
 ## 3. Model Diagnostics ----
 ### a. Posterior Predictive Check ----
 ppc <- pp_check(m_full_refined, type = "dens_overlay", ndraws = 100)
-ggsave("plots/ppc.png", ppc, width = 6, height = 4, dpi = 600, units = "in")
+#ggsave("plots/ppc.png", ppc, width = 6, height = 4, dpi = 600, units = "in")
 
 ### b. Trace Plots ----
 trace <- plot(m_full_refined)
-ggsave("plots/trace_plots.png", trace, width = 6, height = 4, dpi = 600, units = "in")
+#ggsave("plots/trace_plots.png", trace, width = 6, height = 4, dpi = 600, units = "in")
 
-## 3. Prior Selection ----
+## 3. Prior Comparison ----
 loo(m_full_c)
 loo(m_full_s)
 loo(m_full_refined)
-
-coefs_c <- gather_coefs(m_full_c, "Cauchy")
-coefs_s<- gather_coefs(m_full_s, "Horseshoe")
-coefs_full <- gather_coefs(m_full_refined, "Normal")
-
-combined_coefs_plot <- combine_coefs_plot3(coefs_c, coefs_s, coefs_full)
-combined_coefs_plot
-ggsave("plots/coefs_all_priors.png", combined_coefs_plot, width = 9, height = 10, dpi = 600, units = "in")
 
 ## 4. Model Robustness Check -----------------------------------------------
 ### DV Bounding -----
@@ -1379,7 +1335,7 @@ coefs3 <- gather_coefs(m_rbcheck_reg_egos, "Regional Egos Only")
 combined_coefs_plot <- combine_coefs_plot3(coefs1, coefs2, coefs3)
 combined_coefs_plot
 
-ggsave("plots/coefs_rbcheck_egosubsets.png", combined_coefs_plot, width = 9, height = 9, dpi = 600, units = "in")
+ggsave("plots/figure_a4.png", combined_coefs_plot, width = 9, height = 9, dpi = 600, units = "in")
 
 ### b. No ECJW Model Plot ----
 m_full_subset <- readRDS("outputs/m_full_subset.rds")
@@ -1389,4 +1345,5 @@ coefs2 <- gather_coefs(m_full_subset, "Full Model without EJCW")
 combined_coefs_plot2 <- combine_coefs_plot2(coefs1, coefs2)
 combined_coefs_plot2
 
-ggsave("plots/coefs_full_model_no_ejcw_comp.png", combined_coefs_plot2, width = 9, height = 9, dpi = 600, units = "in")
+ggsave("plots/figure_a5.png", combined_coefs_plot2, width = 9, height = 9, dpi = 600, units = "in")
+

@@ -1,8 +1,8 @@
-# Replication files for "Leveraging Partnerships in the Environmental Justice Movement: A Case Study in the California Delta"
+# Replication files for "The Network Structure of Environmental Justice Social Movements: A Case Study in the California Delta"
 
 ## Purpose
 
-The folders contain all replication files for the paper: Pozzi, Tara, Lubell, Mark, and Jessica Rudnick. 2024. *Leveraging Partnerships in the Environmental Justice Movement: A Case Study in the California Delta.* American Journal of Political Science. [Submitted]
+The folders contain all replication files for the paper: Pozzi, Tara, Lubell, Mark, and Jessica Rudnick. 2025. *The Network Structure of Environmental Justice Social Movements: A Case Study in the California Delta.* American Journal of Political Science. [Submitted]
 
 ## Setup
 
@@ -30,21 +30,34 @@ There are three main folders: data, outputs, and scripts.
 
 ### 0_Data folder
 
--   0_data/edgelist.csv
+-   0_data/edgelist.csv: Provides the networks data for 21 EJ groups in the study
 
--   0_data/nodelist.csv
+-   0_data/nodelist.csv: List of all organizations and their characteristics used in this study
+
+-   0_data/org_ids.csv: Organization name and key identification list
 
 ### 1_Outputs folder
 
--   1_output/model_data.csv: Full model dataset created from running R script: 0_data_cleaning.R
+-   1_output/model_dataset.csv: Full model dataset (can recreate this data by running the code in Section C of the analysis script)
 
--   Figures
+-   Model Estimates
 
-    -   Figure_1.png
+    -   m_ego.rds: Model results
+    -   m_ego_alter.rds
+    -   m_full.rds
+    -   m_full_refined.rds
+    -   m_re.rds
+    -   m_bd.rds
+    -   m_full_ejfactor.rds
+    -   m_rbcheck_reg_egos.rds
+    -   m_rbcheck_local_egos.rds
+    -   m_full_subset.rds
 
--   Model_Estimates
+-   Summary Tables
 
-    -   m1_results.RDS
+    -   model_comp_table.doc
+
+    -   vpc_table.doc
 
 ### 2_Scripts folder
 

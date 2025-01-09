@@ -695,7 +695,7 @@ net_plot <- ggraph(net, layout = 'fr') +
   guides(size = "none", shape = guide_legend(title = "Position"), color = guide_legend(title = "Overlap")) 
 
 net_plot
-ggsave("plots/figure_5.png", net_plot, width = 10, height = 8, units = "in")
+ggsave("plots/figure_4.png", net_plot, width = 10, height = 8, units = "in")
 
 
 
@@ -984,7 +984,7 @@ coefs_re_plot <- coefs %>%
 
 coefs_re_plot
 
-ggsave("plots/figure_6.png", coefs_re_plot, width = 10, height = 5, dpi = 600, units = "in")
+ggsave("plots/figure_5.png", coefs_re_plot, width = 10, height = 5, dpi = 600, units = "in")
 
 ##### Boundary Definition Coefs -----
 coefs_bd_plot <- coefs %>% 
@@ -1014,7 +1014,7 @@ coefs_bd_plot <- coefs %>%
 
 coefs_bd_plot
 
-ggsave("plots/figure_7.png", coefs_bd_plot, width = 10, height = 5, dpi = 600, units = "in")
+ggsave("plots/figure_6.png", coefs_bd_plot, width = 10, height = 5, dpi = 600, units = "in")
 
 ## Figures 8-9: Posterior Prediction Plots -------
 #### a. RE predictions ----
@@ -1080,7 +1080,7 @@ plot_collab_memb
 re_plots <- cowplot::plot_grid(plot_np_match, plot_collab_memb, labels = "auto")
 re_plots
 
-ggsave("plots/figure_8.png", re_plots, width = 10, height = 4, dpi = 600, units = "in")
+ggsave("plots/figure_7.png", re_plots, width = 10, height = 4, dpi = 600, units = "in")
 
 #### b. BD predictions ----
 ##### i. Issue match ----
@@ -1183,7 +1183,7 @@ distance_ame %>% median_hdi()
 bd_plots <- cowplot::plot_grid(plot_i_match, plot_geo, plot_dist, labels = "auto")
 bd_plots
 
-ggsave("plots/figure_9.png", bd_plots, width = 10, height = 6, dpi = 600, units = "in")
+ggsave("plots/figure_8.png", bd_plots, width = 10, height = 6, dpi = 600, units = "in")
 
 # D. Supplemental Information ----
 ## 1. Additional Descriptive Information ----
@@ -1202,7 +1202,7 @@ ego_dist <- m_df %>%
   theme_minimal()
 ego_dist
 
-ggsave("plots/figure_a3a.png", ego_dist, width = 6, height = 4, dpi = 600, units = "in")
+ggsave("plots/figure_a2a.png", ego_dist, width = 6, height = 4, dpi = 600, units = "in")
 
 alter_dist <- m_df %>%
   filter(dv == 1) %>%
@@ -1217,7 +1217,7 @@ alter_dist <- m_df %>%
   ylab("Frequency") + 
   theme_minimal()
 alter_dist
-ggsave("plots/figure_a3b.png", alter_dist, width = 6, height = 4, dpi = 600, units = "in")
+ggsave("plots/figure_a2b.png", alter_dist, width = 6, height = 4, dpi = 600, units = "in")
 
 org_distributions <- cowplot::plot_grid(ego_dist, alter_dist, labels = "auto")
 
@@ -1291,7 +1291,7 @@ contrast_ejfactor <- coefs_cat %>%
 
 contrast_ejfactor
 
-ggsave("plots/figure_a2.png", contrast_ejfactor, width = 10, height = 6, dpi = 600, units = "in")
+ggsave("plots/figure_a1.png", contrast_ejfactor, width = 10, height = 6, dpi = 600, units = "in")
 
 ### c. Loo Comparison Table ----
 loo(m_re)
@@ -1335,7 +1335,7 @@ coefs3 <- gather_coefs(m_rbcheck_reg_egos, "Regional Egos Only")
 combined_coefs_plot <- combine_coefs_plot3(coefs1, coefs2, coefs3)
 combined_coefs_plot
 
-ggsave("plots/figure_a4.png", combined_coefs_plot, width = 9, height = 9, dpi = 600, units = "in")
+ggsave("plots/figure_a3.png", combined_coefs_plot, width = 9, height = 9, dpi = 600, units = "in")
 
 ### b. No ECJW Model Plot ----
 m_full_subset <- readRDS("outputs/m_full_subset.rds")
@@ -1345,5 +1345,4 @@ coefs2 <- gather_coefs(m_full_subset, "Full Model without EJCW")
 combined_coefs_plot2 <- combine_coefs_plot2(coefs1, coefs2)
 combined_coefs_plot2
 
-ggsave("plots/figure_a5.png", combined_coefs_plot2, width = 9, height = 9, dpi = 600, units = "in")
-
+ggsave("plots/figure_a4.png", combined_coefs_plot2, width = 9, height = 9, dpi = 600, units = "in")

@@ -658,10 +658,6 @@ net <- network(x = edgelist_names,
 # Attributes
 net %v% 'degree' <- sna::degree(net)
 
-net %v% 'position' <- ifelse(net %v% 'vertex.names' %in% egos, 1, 2)
-
-net %v% 'labels' <- ifelse(net %v% 'vertex.names' %in% egos & net %v% 'position' == 1, net %v%  'vertex.names', '')
-
 # figure out which orgs where named in multiple ego networks
 alter_overlaps <- edgelist_names %>% select(alter) %>% group_by(alter) %>% filter(n() > 1) %>% distinct() %>% pull() # 17 overlapping alters 
 
@@ -673,6 +669,11 @@ ego_alter_overlaps <- intersect(alter_overlaps, both)
 
 # the remaining are just named multiple times as an alter
 just_alter_overlaps <- setdiff(alter_overlaps, both)
+
+net %v% 'position' <- ifelse(net %v% 'vertex.names' %in% egos, 1, 2)
+
+net %v% 'labels' <- ifelse(net %v% 'vertex.names' %in% egos & net %v% 'position' == 1, net %v%  'vertex.names', '')
+
 
 net %v% 'overlaps' <- ifelse(net %v% 'vertex.names' %in% ego_alter_overlaps, # 7 overlapping 
                              1, 
@@ -687,14 +688,14 @@ net_plot <- ggraph(net, layout = 'fr') +
   geom_node_point(aes(size = as.numeric(degree), color = as.character(overlaps), shape = as.character(position)), alpha = .9) +
   scale_size_continuous(range = c(2, 7)) +
   scale_shape_manual(breaks = c(1, 2), values = c(17, 18), labels = c("Ego", "Alter")) +
-  scale_color_manual(breaks = c(0,1,2), values = c("#00BFC4", "gold", "#54278F"), labels = c("None", "Ego named as \nalter", "Alter named \nmultiple times")) +
+  scale_color_manual(breaks = c(0,1,2), values = c("#00BFC4", "gold", "#54278F"), labels = c("None", "Ego in \nmultiple networks", "Alter in \nmultiple networks")) +
   theme_void() +
   geom_node_text(aes(label = labels), size = 4, bg.color = "grey", repel = T, max.overlaps = Inf) +
   theme(legend.position = "right", legend.text = element_text(size = 12)) + 
-  guides(size = "none", shape = guide_legend(title = "Position"), color = guide_legend(title = "Overlap")) 
+  guides(size = guide_legend(title = "Degree"), shape = guide_legend(title = "Shape"), color = guide_legend(title = "Color")) 
 
 net_plot
-ggsave("plots/figure_4.png", net_plot, width = 10, height = 8, units = "in")
+ggsave("3_plots/figure_4.png", net_plot, width = 10, height = 8, units = "in")
 
 
 

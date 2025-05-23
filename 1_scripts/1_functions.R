@@ -66,13 +66,13 @@ gather_coefs_numeric <-  function(m, name) {
       par == "b_count_alter_issues_s" ~ "Alter No. of Issues", 
       par == "b_alter_ej_mission" ~ "Alter EJ Commitment", 
       par == "b_distance_n" ~ "Spatial Distance", 
-      par == "b_count_alter_collaboratives" ~ "Alter No. of Collaboratives",
+      par == "b_count_alter_collaboratives" ~ "Alter No. of Forums",
       par == "b_count_ego_issues" ~ "Ego No. of Issues", 
       par == "b_count_alter_issues" ~ "Alter No. of Issues",
       par == "b_i_match" ~ "No. of Matching Issues", 
-      par == "b_overlap_collab" ~ "Collaborative Membership Overlap", 
-      par == "b_count_ego_collaboratives" ~ "Ego No. of Collaboratives", 
-      par == "b_count_alter_collaboratives" ~ "Alter No. of Collaboratives"
+      par == "b_overlap_collab" ~ "Forum Membership Overlap", 
+      par == "b_count_ego_collaboratives" ~ "Ego No. of Forums", 
+      par == "b_count_alter_collaboratives" ~ "Alter No. of Forums"
     )) %>%
     mutate(variable = case_when(
       str_detect(par, regex("Capacity*")) ~ "Capacity",
@@ -309,7 +309,7 @@ gather_coefs <-  function(m, name) {
       par == "b_i_match_s" ~ "Homophily: Issue Overlap", 
       par == "b_factorej_diff_catlower" ~ "Heterophily: Seeking Less EJ",
       par == "b_factorej_diff_cathigher" ~ "Heterophily: Seeking More EJ",
-      par == "b_count_alter_collaboratives_s" ~ "Alter No. of Collaboratives",
+      par == "b_count_alter_collaboratives_s" ~ "Alter No. of Forums",
       par == "b_factorgeo_diff_catlocal_match" ~ "Homophily: Both Local",
       par == "b_factorgeo_diff_catregional_match" ~ "Homophily: Both Regional",
       par == "b_count_ego_issues" ~ "Ego No. of Issues", 
@@ -319,18 +319,18 @@ gather_coefs <-  function(m, name) {
       par == "b_factorgeo_diff_catsmaller" ~ "Heterophily: Regional Seeking Local", 
       par == "b_ego_localregional" ~ "Ego Regional Group", 
       par == "b_alter_localregional" ~ "Alter Regional Group", 
-      par == "b_overlap_collab" ~ "Homophily: Collaborative Membership Overlap", 
+      par == "b_overlap_collab" ~ "Homophily: Forum Membership Overlap", 
       par == "b_ego_np_501c3" ~ "Ego 501c3 Status", 
       par == "b_c_diff_n" ~ "Heterophily: Capacity Difference", 
-      par == "b_count_ego_collaboratives" ~ "Ego No. of Collaboratives", 
-      par == "b_count_alter_collaboratives" ~ "Alter No. of Collaboratives", 
+      par == "b_count_ego_collaboratives" ~ "Ego No. of Forums", 
+      par == "b_count_alter_collaboratives" ~ "Alter No. of Forums", 
       par == "b_factornp_matchno_np_homophily" ~ "Homophily: Both Groups without 501c3",
       par == "b_factornp_matchlower" ~ "Heterophily: 501c3 Ego Seeking a Non-501c3 Alter", 
       par == "b_factornp_matchhigher" ~ "Heterophily: Non-501c3 Ego Seeking a 501c3 Alter"
     )) %>%
     mutate(variable = case_when(
       str_detect(par, regex("Capacity*")) ~ "Capacity",
-      str_detect(par, regex("Collaborative*")) ~ "Collaborative",
+      str_detect(par, regex("Collaborative*")) ~ "Forum",
       str_detect(par, regex("501c3*")) ~ "501c3 Status", 
       str_detect(par, regex("Commitment*")) ~ "EJ Commitment", 
       str_detect(par, regex("Issues*")) ~ "EJ Issues", 

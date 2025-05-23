@@ -14,21 +14,21 @@ library(sna) # network analysis
 library(brms) # modeling package
 library(tidybayes) # model results interpretation
 library(emmeans)
-source("scripts/1_functions.R")
+source("1_scripts/1_functions.R")
 
 # Upload data (skip if you want to recreate datasets) -------------------------------------
 ## Read in attribute data for each organization in the analysis
-nodelist <- read.csv("data/nodelist.csv")
+nodelist <- read.csv("0_data/nodelist.csv")
 
 ## Read in edgelist for ego networks
-edgelist <- read.csv("data/edgelist.csv")
+edgelist <- read.csv("0_data/edgelist.csv")
 
 ## Organization key
-id_key <- read.csv("data/org_ids.csv")
+id_key <- read.csv("0_data/org_ids.csv")
 
 # A. Case Study Plot ---------------------------------------------------------
 ## Legal Delta 
-delta.boundary <- st_read("/Users/tarapozzi/Documents/R-Projects/ej_networks/data/raw/i03_Delta_PrimarySecondary_Zones/i03_Delta_PrimarySecondary_Zones.shp") %>%
+delta.boundary <- st_read("/Users/tarapozzi/Documents/R-Projects/ej_networks/0_data/raw/i03_Delta_PrimarySecondary_Zones/i03_Delta_PrimarySecondary_Zones.shp") %>%
   st_transform(., crs = "+proj=utm +zone=10 +datum=NAD83 +ellps=GRS80") %>%
   mutate(color = ifelse(Zone == "Primary", "#726186", "brown4"), 
          line = ifelse(Zone == "Primary", "solid", "dashed"))
@@ -64,7 +64,7 @@ delta.pl <- pl %>%
   st_transform(., crs = "+proj=utm +zone=10 +datum=NAD83 +ellps=GRS80")
 
 ## CalEnviroScreen 
-ces.data <- st_read("data/calenviroscreen40shpf2021shp/CES4 Final Shapefile.shp")
+ces.data <- st_read("0_data/calenviroscreen40shpf2021shp/CES4 Final Shapefile.shp")
 glimpse(ces.data) # quick visual check of df to make sure it uploaded well
 
 ### select Delta counties 
@@ -122,7 +122,7 @@ case.study.plot <- tm_shape(osm) +
 
 case.study.plot 
 
-tmap_save(case.study.plot, "plots/figure_2.png", width = 5, height = 7, dpi = 600, units = "in")
+tmap_save(case.study.plot, "3_plots/figure_2.png", width = 5, height = 7, dpi = 600, units = "in")
 
 
 # B. Raw Data -------------------------------------------------------------
@@ -138,7 +138,7 @@ year_plot <- nodelist %>%
   filter(year > 1969) %>%
   ggplot(., aes(year, n)) + 
   geom_bar(stat = "identity", aes(fill = Type), position = "stack") + 
-  scale_fill_manual(breaks = c("EJ Group", "Collaborative"), values = c("#657D94", "brown4")) + 
+  scale_fill_manual(breaks = c("EJ Group", "Forum"), values = c("#657D94", "brown4")) + 
   xlab("Founding Year") + 
   ylab("Count") + 
   theme_bw() +
@@ -169,7 +169,7 @@ year_issue_plot
 nodelist <- nodelist %>%
   filter(ID != "G58" & ID != "G62")
 
-edgelist <- read.csv("data/edgelist.csv") %>%
+edgelist <- read.csv("0_data/edgelist.csv") %>%
   filter(alter != "G58" & alter != "G62")
 
 ## 2. Add nodelist to edgelist ----
@@ -492,11 +492,11 @@ bounded_d <- bounded_d %>%
   mutate(distance = as.numeric(distance)) # make numeric instead of a matrix 
 
 ## 5. Export model data ----
-write.csv(bounded_d, "outputs/model_dataset.csv")
+write.csv(bounded_d, "2_outputs/model_dataset.csv")
 
 # C. Analysis -----
 ## Model Data ----
-m_df <- read.csv("outputs/model_dataset.csv") 
+m_df <- read.csv("2_outputs/model_dataset.csv") 
 m_df <- m_df %>%
   ungroup() %>%
   mutate(c_diff_cat = factor(c_diff_cat, levels = c("match", "lower", "higher")), 
@@ -695,7 +695,7 @@ net_plot <- ggraph(net, layout = 'fr') +
   guides(size = guide_legend(title = "Degree"), shape = guide_legend(title = "Shape"), color = guide_legend(title = "Color")) 
 
 net_plot
-ggsave("3_plots/figure_4.png", net_plot, width = 10, height = 8, units = "in")
+ggsave("3_3_plots/figure_4.png", net_plot, width = 10, height = 8, units = "in")
 
 
 
@@ -703,13 +703,13 @@ ggsave("3_plots/figure_4.png", net_plot, width = 10, height = 8, units = "in")
 ## 1. Variance Components Models ----
 ### a. Ego Only
 set.seed(1992)
-m_ego <- brm(dv ~ (1|ego), data = m_df, cores = 4, file = "outputs/m_ego.rds", family = bernoulli(link = "logit"))
+m_ego <- brm(dv ~ (1|ego), data = m_df, cores = 4, file = "2_outputs/m_ego.rds", family = bernoulli(link = "logit"))
 m_ego
 
 
 ### b. Ego + Alter 
 set.seed(1992)
-m_ego_alter <- brm(dv ~ (1|ego) + (1|alter),  cores = 4, file = "outputs/m_ego_alter.rds",  data = m_df, family = bernoulli(link = "logit"))
+m_ego_alter <- brm(dv ~ (1|ego) + (1|alter),  cores = 4, file = "2_outputs/m_ego_alter.rds",  data = m_df, family = bernoulli(link = "logit"))
 m_ego_alter
 
 ## 2. Explanatory Models -----
@@ -724,7 +724,7 @@ m_full <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + coun
               iter = 2000, #actual samples
               chains = 4,
               cores = 2,
-              file = "outputs/m_full",
+              file = "2_outputs/m_full",
               control = list(adapt_delta = 0.99))
 
 
@@ -765,7 +765,7 @@ m_re <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + count_
             iter = 2000, #actual samples
             chains = 4,
             cores = 4,
-            file = "outputs/m_re",
+            file = "2_outputs/m_re",
             control = list(adapt_delta = 0.99))
 
 
@@ -781,7 +781,7 @@ m_bd <- brm(dv ~  factor(ej_diff_cat) + count_ego_issues + count_alter_issues + 
             iter = 2000, #actual samples
             chains = 4,
             cores = 4,
-            file = "outputs/m_bd", # save your model output
+            file = "2_outputs/m_bd", # save your model output
             control = list(adapt_delta = 0.99)) 
 
 ### d. Full Model (ego only)----
@@ -795,7 +795,7 @@ m_full_ego <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + 
                   iter = 2000, #actual samples
                   chains = 4,
                   cores = 2,
-                  file = "outputs/m_full_ego",
+                  file = "2_outputs/m_full_ego",
                   control = list(adapt_delta = 0.99))
 
 ### e. Full Model refined after VIF test ----
@@ -809,7 +809,7 @@ m_full_refined <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat
               iter = 2000, #actual samples
               chains = 4,
               cores = 2,
-              file = "outputs/m_full_refined",
+              file = "2_outputs/m_full_refined",
               control = list(adapt_delta = 0.99))
 
 summary(m_full_refined)
@@ -830,7 +830,7 @@ m_full_s <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + co
               iter = 2000, #actual samples
               chains = 4,
               cores = 2,
-              file = "outputs/m_full_s",
+              file = "2_outputs/m_full_s",
               control = list(adapt_delta = 0.99))
 
 ### b. Cauchy -----
@@ -845,7 +845,7 @@ m_full_c <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat) + co
               iter = 2000, #actual samples
               chains = 4,
               cores = 2,
-              file = "outputs/m_full_c",
+              file = "2_outputs/m_full_c",
               control = list(adapt_delta = 0.99))
 
 ### c. Selection ----
@@ -869,7 +869,7 @@ m_rbcheck_local_egos <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_di
                             iter = 2000, #actual samples
                             chains = 4,
                             cores = 2,
-                            file = "outputs/m_rbcheck_local_egos",
+                            file = "2_outputs/m_rbcheck_local_egos",
                             control = list(adapt_delta = 0.99))
 
 summary(m_rbcheck_local_egos)
@@ -891,7 +891,7 @@ m_rbcheck_reg_egos <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff
                           iter = 2000, #actual samples
                           chains = 4,
                           cores = 2,
-                          file = "outputs/m_rbcheck_reg_egos",
+                          file = "2_outputs/m_rbcheck_reg_egos",
                           control = list(adapt_delta = 0.99))
 
 summary(m_rbcheck_reg_egos)
@@ -911,7 +911,7 @@ m_full_subset <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_cat)
                 iter = 2000, #actual samples
                 chains = 4,
                 cores = 2,
-                file = "outputs/m_full_subset",
+                file = "2_outputs/m_full_subset",
                 control = list(adapt_delta = 0.99)) 
 
 ### d. Full Model with EJ as factors (ego + alter RE)----
@@ -925,20 +925,20 @@ m_full_ejfactor <- brm(dv ~ ego_capacity_n + alter_capacity_n + factor(c_diff_ca
               iter = 2000, #actual samples
               chains = 4,
               cores = 2,
-              file = "outputs/m_full_ejfactor",
+              file = "2_outputs/m_full_ejfactor",
               control = list(adapt_delta = 0.99))
 
 ## 6. Model Plots ----
 ## Read-in model results ----
-m_ego <- readRDS("outputs/m_ego.rds")
-m_ego_alter <- readRDS("outputs/m_ego_alter.rds")
-m_full_c <- readRDS("outputs/m_full_c.rds")
-m_full_s <- readRDS("outputs/m_full_s.rds")
-m_re <- readRDS("outputs/m_re.rds")
-m_bd <- readRDS("outputs/m_bd.rds")
-m_full <- readRDS("outputs/m_full.rds")
-m_full_refined <- readRDS("outputs/m_full_refined.rds")
-m_full_ejfactor <- readRDS("outputs/m_full_ejfactor.rds")
+m_ego <- readRDS("2_outputs/m_ego.rds")
+m_ego_alter <- readRDS("2_outputs/m_ego_alter.rds")
+m_full_c <- readRDS("2_outputs/m_full_c.rds")
+m_full_s <- readRDS("2_outputs/m_full_s.rds")
+m_re <- readRDS("2_outputs/m_re.rds")
+m_bd <- readRDS("2_outputs/m_bd.rds")
+m_full <- readRDS("2_outputs/m_full.rds")
+m_full_refined <- readRDS("2_outputs/m_full_refined.rds")
+m_full_ejfactor <- readRDS("2_outputs/m_full_ejfactor.rds")
 
 ## Coefficient Plots ----
 ### a. Figures 6-7: Coefficient Plots ----
@@ -960,11 +960,11 @@ coefs_re_plot <- coefs %>%
     par == "Same Capacity" ~ 4,
     par == "Higher Capacity Seeking Lower" ~ 4.1, 
     par == "Lower Capacity Seeking Higher" ~ 4.2,
-    par == "Collaborative Membership Overlap" ~ 6, 
+    par == "Forum Membership Overlap" ~ 6, 
     par == "Ego Capacity" ~ 6.1,
-    par == "Ego No. of Collaboratives" ~ 6.2, 
+    par == "Ego No. of Forums" ~ 6.2, 
     par == "Alter Capacity" ~ 6.3,
-    par == "Alter No. of Collaboratives" ~ 6.4,
+    par == "Alter No. of Forums" ~ 6.4,
     TRUE ~ ordering
   )) %>%
   mutate(par = fct_reorder(par, ordering,  .desc = T)) %>%
@@ -984,7 +984,7 @@ coefs_re_plot <- coefs %>%
 
 coefs_re_plot
 
-ggsave("plots/figure_5.png", coefs_re_plot, width = 10, height = 5, dpi = 600, units = "in")
+ggsave("3_plots/figure_5.png", coefs_re_plot, width = 10, height = 5, dpi = 600, units = "in")
 
 ##### Boundary Definition Coefs -----
 coefs_bd_plot <- coefs %>% 
@@ -1014,7 +1014,7 @@ coefs_bd_plot <- coefs %>%
 
 coefs_bd_plot
 
-ggsave("plots/figure_6.png", coefs_bd_plot, width = 10, height = 5, dpi = 600, units = "in")
+ggsave("3_plots/figure_6.png", coefs_bd_plot, width = 10, height = 5, dpi = 600, units = "in")
 
 ## Figures 8-9: Posterior Prediction Plots -------
 #### a. RE predictions ----
@@ -1070,7 +1070,7 @@ plot_collab_memb <- ggplot(overlap_collab_ame,
   stat_lineribbon() +
   scale_x_continuous(breaks = c(0, 1, 2, 3, 4), labels = c("0 \n(Heterophily)", "1", "2", "3", "4 \n(Homophily)")) +
   scale_fill_brewer(palette = "Greys") +
-  labs(x = "Overlapping Collaborative Membership", y = "Tie Probability",
+  labs(x = "Overlapping Forum Membership", y = "Tie Probability",
        fill = "Credible interval") +
   theme_minimal() +
   theme(legend.position = "none")
@@ -1080,7 +1080,7 @@ plot_collab_memb
 re_plots <- cowplot::plot_grid(plot_np_match, plot_collab_memb, labels = "auto")
 re_plots
 
-ggsave("plots/figure_7.png", re_plots, width = 10, height = 4, dpi = 600, units = "in")
+ggsave("3_plots/figure_7.png", re_plots, width = 10, height = 4, dpi = 600, units = "in")
 
 #### b. BD predictions ----
 ##### i. Issue match ----
@@ -1183,7 +1183,7 @@ distance_ame %>% median_hdi()
 bd_plots <- cowplot::plot_grid(plot_i_match, plot_geo, plot_dist, labels = "auto")
 bd_plots
 
-ggsave("plots/figure_8.png", bd_plots, width = 10, height = 6, dpi = 600, units = "in")
+ggsave("3_plots/figure_8.png", bd_plots, width = 10, height = 6, dpi = 600, units = "in")
 
 # D. Supplemental Information ----
 ## 1. Additional Descriptive Information ----
@@ -1202,7 +1202,7 @@ ego_dist <- m_df %>%
   theme_minimal()
 ego_dist
 
-ggsave("plots/figure_a2a.png", ego_dist, width = 6, height = 4, dpi = 600, units = "in")
+ggsave("3_plots/figure_a2a.png", ego_dist, width = 6, height = 4, dpi = 600, units = "in")
 
 alter_dist <- m_df %>%
   filter(dv == 1) %>%
@@ -1217,7 +1217,7 @@ alter_dist <- m_df %>%
   ylab("Frequency") + 
   theme_minimal()
 alter_dist
-ggsave("plots/figure_a2b.png", alter_dist, width = 6, height = 4, dpi = 600, units = "in")
+ggsave("3_plots/figure_a2b.png", alter_dist, width = 6, height = 4, dpi = 600, units = "in")
 
 org_distributions <- cowplot::plot_grid(ego_dist, alter_dist, labels = "auto")
 
@@ -1225,9 +1225,9 @@ org_distributions <- cowplot::plot_grid(ego_dist, alter_dist, labels = "auto")
 
 ## 2. Model Comparison ----------------------------------------------
 ### a. Coefficient Table ----
-sjPlot::tab_model(m_re, m_bd, m_full_refined, dv.labels = c("Resource Exchange", "Boundary Definition", "Full Model"), file = "outputs/paper_model_table.doc")
+sjPlot::tab_model(m_re, m_bd, m_full_refined, dv.labels = c("Resource Exchange", "Boundary Definition", "Full Model"), file = "2_outputs/paper_model_table.doc")
 
-sjPlot::tab_model(m_full_refined, m_full_refined2, dv.labels = c( "Full Model", "Full Model 2"), file = "outputs/paper_model_table2.doc")
+sjPlot::tab_model(m_full_refined, m_full_refined2, dv.labels = c( "Full Model", "Full Model 2"), file = "2_outputs/paper_model_table2.doc")
 
 ### b. EJ Commitment Model with EJ variables as factors ----
 # use emmeans to calculate intervals:
@@ -1291,7 +1291,7 @@ contrast_ejfactor <- coefs_cat %>%
 
 contrast_ejfactor
 
-ggsave("plots/figure_a1.png", contrast_ejfactor, width = 10, height = 6, dpi = 600, units = "in")
+ggsave("3_plots/figure_a1.png", contrast_ejfactor, width = 10, height = 6, dpi = 600, units = "in")
 
 ### c. Loo Comparison Table ----
 loo(m_re)
@@ -1303,16 +1303,16 @@ loo(m_full_c)
 loo(m_full_s)
 
 ### d. VPC Table ----
-sjPlot::tab_model(m_ego, m_ego_alter, m_full_ego, m_full_refined, dv.labels = c("VPC - Ego", "VPC - Ego + Alter", "Full Model - Ego", "Full Model - Ego + Alter"), file = "outputs/vpc_full_model_comp_table.doc")
+sjPlot::tab_model(m_ego, m_ego_alter, m_full_ego, m_full_refined, dv.labels = c("VPC - Ego", "VPC - Ego + Alter", "Full Model - Ego", "Full Model - Ego + Alter"), file = "2_outputs/vpc_full_model_comp_table.doc")
 
 ## 3. Model Diagnostics ----
 ### a. Posterior Predictive Check ----
 ppc <- pp_check(m_full_refined, type = "dens_overlay", ndraws = 100)
-#ggsave("plots/ppc.png", ppc, width = 6, height = 4, dpi = 600, units = "in")
+#ggsave("3_plots/ppc.png", ppc, width = 6, height = 4, dpi = 600, units = "in")
 
 ### b. Trace Plots ----
 trace <- plot(m_full_refined)
-#ggsave("plots/trace_plots.png", trace, width = 6, height = 4, dpi = 600, units = "in")
+#ggsave("3_plots/trace_plots.png", trace, width = 6, height = 4, dpi = 600, units = "in")
 
 ## 3. Prior Comparison ----
 loo(m_full_c)
@@ -1324,9 +1324,9 @@ loo(m_full_refined)
 ### The model presented in the manuscript bounds potential ego-alter ties by geographic overlap between groups
 ### How do the results change with different bounding scenarios?
 ### a. Ego Subsets ----
-m_rbcheck_local_egos <- readRDS("outputs/m_rbcheck_local_egos.rds")
-m_rbcheck_reg_egos <- readRDS("outputs/m_rbcheck_reg_egos.rds")
-m_full_refined <- readRDS("outputs/m_full_refined.rds")
+m_rbcheck_local_egos <- readRDS("2_outputs/m_rbcheck_local_egos.rds")
+m_rbcheck_reg_egos <- readRDS("2_outputs/m_rbcheck_reg_egos.rds")
+m_full_refined <- readRDS("2_outputs/m_full_refined.rds")
 
 coefs1 <- gather_coefs(m_full_refined, "Full Model")
 coefs2 <- gather_coefs(m_rbcheck_local_egos, "Local Egos Only")
@@ -1335,14 +1335,15 @@ coefs3 <- gather_coefs(m_rbcheck_reg_egos, "Regional Egos Only")
 combined_coefs_plot <- combine_coefs_plot3(coefs1, coefs2, coefs3)
 combined_coefs_plot
 
-ggsave("plots/figure_a3.png", combined_coefs_plot, width = 9, height = 9, dpi = 600, units = "in")
+ggsave("3_plots/figure_a3.png", combined_coefs_plot, width = 9, height = 9, dpi = 600, units = "in")
 
 ### b. No ECJW Model Plot ----
-m_full_subset <- readRDS("outputs/m_full_subset.rds")
+m_full_subset <- readRDS("2_outputs/m_full_subset.rds")
 coefs1 <- gather_coefs(m_full_refined, "Full Model")
 coefs2 <- gather_coefs(m_full_subset, "Full Model without EJCW")
 
 combined_coefs_plot2 <- combine_coefs_plot2(coefs1, coefs2)
 combined_coefs_plot2
 
-ggsave("plots/figure_a4.png", combined_coefs_plot2, width = 9, height = 9, dpi = 600, units = "in")
+ggsave("3_plots/figure_a4.png", combined_coefs_plot2, width = 9, height = 9, dpi = 600, units = "in")
+

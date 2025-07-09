@@ -76,7 +76,7 @@ gather_coefs_numeric <-  function(m, name) {
     )) %>%
     mutate(variable = case_when(
       str_detect(par, regex("Capacity*")) ~ "Capacity",
-      str_detect(par, regex("Collaborative*")) ~ "Collaborative",
+      str_detect(par, regex("Forum*")) ~ "Forum",
       str_detect(par, regex("501c3*")) ~ "501c3 Status", 
       str_detect(par, regex("Commitment*")) ~ "EJ Commitment", 
       str_detect(par, regex("Issues*")) ~ "EJ Issues", 

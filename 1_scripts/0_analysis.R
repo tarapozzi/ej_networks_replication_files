@@ -688,14 +688,15 @@ net_plot <- ggraph(net, layout = 'fr') +
   geom_node_point(aes(size = as.numeric(degree), color = as.character(overlaps), shape = as.character(position)), alpha = .9) +
   scale_size_continuous(range = c(2, 7)) +
   scale_shape_manual(breaks = c(1, 2), values = c(17, 18), labels = c("Ego", "Alter")) +
-  scale_color_manual(breaks = c(0,1,2), values = c("#00BFC4", "gold", "#54278F"), labels = c("None", "Ego in \nmultiple networks", "Alter in \nmultiple networks")) +
+  scale_color_grey(breaks = c(0,1,2), labels = c("One Network", "Ego in \nmultiple networks", "Alter in \nmultiple networks")) + 
+  #scale_color_manual(breaks = c(0,1,2), values = c("#00BFC4", "gold", "#54278F"), labels = c("None", "Ego in \nmultiple networks", "Alter in \nmultiple networks")) +
   theme_void() +
-  geom_node_text(aes(label = labels), size = 4, bg.color = "grey", repel = T, max.overlaps = Inf) +
+  #geom_node_text(aes(label = labels), size = 4, bg.color = "grey", repel = T, max.overlaps = Inf) +
   theme(legend.position = "right", legend.text = element_text(size = 12)) + 
   guides(size = guide_legend(title = "Degree"), shape = guide_legend(title = "Shape"), color = guide_legend(title = "Color")) 
 
 net_plot
-ggsave("3_3_plots/figure_4.png", net_plot, width = 10, height = 8, units = "in")
+ggsave("3_plots/figure_4.png", net_plot, width = 10, height = 8, units = "in")
 
 
 
@@ -973,10 +974,12 @@ coefs_re_plot <- coefs %>%
   geom_pointinterval(aes(xmin = .lower, xmax = .upper), position=position_dodge(width=.75), height=0) + 
   geom_vline(xintercept = 0) +
   scale_alpha_discrete(range = c(0.4, 1)) +
-  scale_color_manual(values = c("#88694B",
-                                "#657D94",
-                                "#35483F"),
+  scale_color_manual(values = c("black", "grey40", "grey70"),
                      guide = guide_legend(reverse = TRUE, ncol = 3)) +
+  #scale_color_manual(values = c("#88694B",
+                                #"#657D94",
+                                #"#35483F"),
+                     #guide = guide_legend(reverse = TRUE, ncol = 3)) +
   labs(x = "Coefficient", y = "", color = "Variable", shape = "Type") +
   guides(alpha = "none", color = guide_legend(ncol = 1), shape = guide_legend(ncol = 1)) + 
   theme_bw() +
@@ -1003,10 +1006,12 @@ coefs_bd_plot <- coefs %>%
   geom_pointinterval(aes(xmin = .lower, xmax = .upper), position=position_dodge(width=.75), height=0) + 
   geom_vline(xintercept = 0) +
   scale_alpha_discrete(range = c(0.4, 1)) +
-  scale_color_manual(values = c("#88694B",
-                                "#657D94",
-                                "#35483F"),
+  scale_color_manual(values = c("black", "grey40", "grey70"),
                      guide = guide_legend(reverse = TRUE, ncol = 3)) +
+  #scale_color_manual(values = c("#88694B",
+                               #"#657D94",
+                                #"#35483F"),
+                     #guide = guide_legend(reverse = TRUE, ncol = 3)) +
   labs(x = "Coefficient", y = "", color = "Variable", shape = "Type") +
   guides(alpha = "none", color = guide_legend(ncol = 1), shape = guide_legend(ncol = 1)) + 
   theme_bw() +

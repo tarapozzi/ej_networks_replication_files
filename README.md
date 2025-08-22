@@ -20,16 +20,6 @@ The following R-packages were used the analysis:
 
 -   tidbayes
 
--   tidygeocoder
-
--   sf
-
--   tigris
-
--   tmap
-
--   tmaptools
-
 -   network
 
 -   ggraph
@@ -48,11 +38,7 @@ There are three main folders: data, outputs, and scripts.
 
 ### 0_Data folder
 
--   edgelist.csv: Provides the networks data for 21 EJ groups in the study
-
--   nodelist.csv: List of all organizations and their characteristics used in this study
-
--   calenviroscreen40shpf2021shp: Shapefile for CES 4.0 scores
+-   model_dataset.csv: Full model dataset (can recreate this data by running the code in Section C of the analysis script)
 
 ### 1_Scripts folder
 
@@ -61,8 +47,6 @@ There are three main folders: data, outputs, and scripts.
 -   1_functions.R: Functions referenced in the analysis script
 
 ### 2_Outputs folder
-
--   model_dataset.csv: Full model dataset (can recreate this data by running the code in Section C of the analysis script)
 
 -   Model Estimates
 

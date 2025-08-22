@@ -1,12 +1,16 @@
 # Unanonymous data files
-/0_data/unanonymous_data
-/1_scripts/unanonymized_scripts
-/3_plots
+0_data/unanonymous_data
+1_scripts/unanonymized_scripts
+3_plots
 
 # History files
 .Rhistory
 .Rapp.history
 .DS_Store
+
+0_data/.DS_Store
+1_scripts/.DS_Store
+3_plots/.DS_Store
 
 # Session Data files
 .RData

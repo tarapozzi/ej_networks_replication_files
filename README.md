@@ -38,7 +38,7 @@ There are three main folders: data, outputs, and scripts.
 
 ### 1_Scripts folder
 
--   0_analysis.R: Code to recreate model dataset, analysis, and visualizations for this study
+-   0_analysis_anonymous.R: Code to recreate model dataset, analysis, and visualizations for this study
 
 -   1_functions.R: Functions referenced in the analysis script
 
@@ -74,6 +74,7 @@ There are three main folders: data, outputs, and scripts.
         -   m_rbcheck_local_egos.rds: Full model with only egos that work at the local scale
         -   m_rbcheck_reg_egos.rds: Full model with only egos that work at the regional scale
         -   m_full_subset.rds: Full model without one of the egos that is also a collaborative
+        -   m_full_ego.rds: Full model with just the egos as a random effect
         -   m_full_ejfactor.rds: Version of m_full_refined with EJ commitment modeled as a factor and with an interaction between ego and alter EJ commitment
 
 -   Summary Tables
@@ -81,27 +82,3 @@ There are three main folders: data, outputs, and scripts.
     -   model_comp_table.doc: Boundary Definition, Resource Exchange, and Full Model (model used in the main text) results comparison table
 
     -   vpc_table.doc: Variance Compoonents Model results in comparison to Full Model results looking at the variation explained by including 1) ego random effect and 2) ego and alter random effects.
-
-### 3_Plots folder
-
--   figure_2.png: CalEnviroScreen (CES) 4.0 scores for the Delta with the three urban centers highlighted in relation to the Legal Delta designations: Sacramento, Stockton, and Eastern Contra Costa
-
--   figure_4.png: Combined network plot of all 21 ego networks
-
--   figure_5.png: Coefficient plot for resource exchange variables
-
--   figure_6.png: Coefficient plot for boundary definition variables
-
--   figure_7.png: Marginal Effects for Resource Exchange
-
--   figure_8.png: Marginal Effects for Boundary Definition
-
--   figure_a1.png: Coefficient plot for EJ commitment when modeled as an interaction between ego EJ commitment and alter EJ commitment
-
--   figure_a2a.png: Ego degree distribution
-
--   figure_a2b.png: Alter degree distribution
-
--   figure a3.png: Model results comparison with ego subset data
-
--   figure_a4.png: Model results comparison with EJCW removed

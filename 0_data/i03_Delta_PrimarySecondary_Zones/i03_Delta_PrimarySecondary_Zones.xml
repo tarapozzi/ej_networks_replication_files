@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?><metadata>
+    <idinfo>
+        <citation>
+            <citeinfo>
+                <origin/>
+                <title>i03_Delta_PrimarySecondary_Zones</title>
+                <onlink>https://gis.water.ca.gov/arcgis/rest/services/Boundaries/i03_Delta_PrimarySecondary_Zones/FeatureServer</onlink>
+            </citeinfo>
+        </citation>
+        <descript>
+            <abstract>This dataset shows the Delta Primary and Secondary zones. The Primary Zone is defined as “Delta land and water area of primary state concern and statewide significance”. The Primary Zone is the area covered by the Delta Protection Act which directs the Delta Protection commission to create resource management plans for the Primary Zone. The Secondary Zone is the area outside the Primary Zone and within the Legal Delta. It includes cities such as Stockton, Lathrop, West Sacramento, and Oakley. Development and projects within the Secondary Zone are covered by the California Environmental Quality Act. 
+Comments, problems, improvements, updates, or suggestions should be forwarded to gis@water.ca.gov.</abstract>
+            <purpose>This dataset shows the Delta Primary and Secondary zones. The Primary Zone is defined as “Delta land and water area of primary state concern and statewide significance”. The Primary Zone is the area covered by the Delta Protection Act which directs the Delta Protection commission to create resource management plans for the Primary Zone. The Secondary Zone is the area outside the Primary Zone and within the Legal Delta. It includes cities such as Stockton, Lathrop, West Sacramento, and Oakley. Development and projects within the Secondary Zone are covered by the California Environmental Quality Act. 
+Comments, problems, improvements, updates, or suggestions should be forwarded to gis@water.ca.gov.</purpose>
+        </descript>
+        <keywords>
+            <theme>
+                <themekt>None</themekt>
+                <themekey>Delta</themekey>
+                <themekey>San Joaquin</themekey>
+                <themekey>Sacramento</themekey>
+                <themekey>Primary</themekey>
+                <themekey>Secondary</themekey>
+                <themekey>Zones</themekey>
+                <themekey>Primary Zone</themekey>
+                <themekey>Secondary Zon</themekey>
+                <themekey>Delta Protection Act</themekey>
+                <themekey>Delta Protection Commission</themekey>
+                <themekey>Resource Management Plan</themekey>
+                <themekey>PRC 29760</themekey>
+                <themekey>PRC 20030</themekey>
+                <themekey>2019</themekey>
+            </theme>
+        </keywords>
+        <accconst>Other Constraints</accconst>
+        <useconst>None</useconst>
+    </idinfo>
+    <metainfo>
+        <metd>20220803</metd>
+        <metc>
+            <cntinfo>
+                <cntorgp>
+                    <cntorg>California Department of Water Resources</cntorg>
+                </cntorgp>
+            </cntinfo>
+        </metc>
+        <metstdn>FGDC Content Standard for Digital Geospatial Metadata</metstdn>
+        <metstdv>FGDC-STD-001-1998</metstdv>
+        <mettc>local time</mettc>
+    </metainfo>
+</metadata>

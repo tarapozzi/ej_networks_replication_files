@@ -34,7 +34,7 @@ There are three main folders: data, outputs, and scripts.
 
 -   nodelist.csv: List of all organizations and their characteristics used in this study
 
--   0_data/org_ids.csv: Organization name and key identification list
+-   calenviroscreen40shpf2021shp: Shapefile for CES 4.0 scores
 
 ### 1_Scripts folder
 

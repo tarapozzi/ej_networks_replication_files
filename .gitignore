@@ -1,3 +1,6 @@
+# Unanonymous data files
+/0_data/unanonymous_data
+/1_scripts/unanonymized_scripts
 # History files
 .Rhistory
 .Rapp.history

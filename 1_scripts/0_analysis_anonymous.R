@@ -23,12 +23,9 @@ nodelist <- read.csv("0_data/nodelist.csv")
 ## Read in edgelist for ego networks
 edgelist <- read.csv("0_data/edgelist.csv")
 
-## Organization key
-id_key <- read.csv("0_data/org_ids.csv")
-
 # A. Case Study Plot ---------------------------------------------------------
 ## Legal Delta 
-delta.boundary <- st_read("/Users/tarapozzi/Documents/R-Projects/ej_networks/0_data/raw/i03_Delta_PrimarySecondary_Zones/i03_Delta_PrimarySecondary_Zones.shp") %>%
+delta.boundary <- st_read("0_data/i03_Delta_PrimarySecondary_Zones/i03_Delta_PrimarySecondary_Zones.shp") %>%
   st_transform(., crs = "+proj=utm +zone=10 +datum=NAD83 +ellps=GRS80") %>%
   mutate(color = ifelse(Zone == "Primary", "#726186", "brown4"), 
          line = ifelse(Zone == "Primary", "solid", "dashed"))
@@ -122,7 +119,7 @@ case.study.plot <- tm_shape(osm) +
 
 case.study.plot 
 
-tmap_save(case.study.plot, "3_plots/figure_2.png", width = 5, height = 7, dpi = 600, units = "in")
+#tmap_save(case.study.plot, "3_plots/figure_2.png", width = 5, height = 7, dpi = 600, units = "in")
 
 
 # B. Raw Data -------------------------------------------------------------
@@ -638,20 +635,9 @@ m_df %>%
   mutate(porp = n/sum(n))
 
 ## 2. Network figure ----
-# Replace anonymous IDs with names 
-edgelist_names <- edgelist %>%
-  left_join(., id_key, by = c("ego" = "ID")) %>%
-  select(-ego) %>%
-  rename(ego = org) %>%
-  left_join(., id_key, by = c("alter" = "ID")) %>%
-  select(-alter) %>%
-  rename(alter = org)
-
-nodelist_names <- id_key %>% select(org)
-
 # Create network object
-net <- network(x = edgelist_names, 
-               vertices = nodelist_names, 
+net <- network(x = edgelist, 
+               vertices = nodelist, 
                bipartite = F,  
                directed = T, 
                isolates = F)
@@ -659,11 +645,11 @@ net <- network(x = edgelist_names,
 net %v% 'degree' <- sna::degree(net)
 
 # figure out which orgs where named in multiple ego networks
-alter_overlaps <- edgelist_names %>% select(alter) %>% group_by(alter) %>% filter(n() > 1) %>% distinct() %>% pull() # 17 overlapping alters 
+alter_overlaps <- edgelist %>% select(alter) %>% group_by(alter) %>% filter(n() > 1) %>% distinct() %>% pull() # 17 overlapping alters 
 
 # out of those orgs, which ones were also an ego in the analysis
-egos <- edgelist_names %>% select(ego) %>% distinct() %>% pull() 
-alters <- edgelist_names %>% select(alter) %>% distinct() %>% pull()
+egos <- edgelist %>% select(ego) %>% distinct() %>% pull() 
+alters <- edgelist %>% select(alter) %>% distinct() %>% pull()
 both <- intersect(egos, alters)
 ego_alter_overlaps <- intersect(alter_overlaps, both)
 
@@ -696,7 +682,7 @@ net_plot <- ggraph(net, layout = 'fr') +
   guides(size = guide_legend(title = "Degree"), shape = guide_legend(title = "Shape"), color = guide_legend(title = "Color")) 
 
 net_plot
-ggsave("3_plots/figure_4.png", net_plot, width = 10, height = 8, units = "in")
+##ggsave("3_plots/figure_4.png", net_plot, width = 10, height = 8, units = "in")
 
 
 
@@ -987,7 +973,7 @@ coefs_re_plot <- coefs %>%
 
 coefs_re_plot
 
-ggsave("3_plots/figure_5.png", coefs_re_plot, width = 10, height = 5, dpi = 600, units = "in")
+#ggsave("3_plots/figure_5.png", coefs_re_plot, width = 10, height = 5, dpi = 600, units = "in")
 
 ##### Boundary Definition Coefs -----
 coefs_bd_plot <- coefs %>% 
@@ -1019,7 +1005,7 @@ coefs_bd_plot <- coefs %>%
 
 coefs_bd_plot
 
-ggsave("3_plots/figure_6.png", coefs_bd_plot, width = 10, height = 5, dpi = 600, units = "in")
+#ggsave("3_plots/figure_6.png", coefs_bd_plot, width = 10, height = 5, dpi = 600, units = "in")
 
 ## Figures 8-9: Posterior Prediction Plots -------
 #### a. RE predictions ----
@@ -1085,7 +1071,7 @@ plot_collab_memb
 re_plots <- cowplot::plot_grid(plot_np_match, plot_collab_memb, labels = "auto")
 re_plots
 
-ggsave("3_plots/figure_7.png", re_plots, width = 10, height = 4, dpi = 600, units = "in")
+#ggsave("3_plots/figure_7.png", re_plots, width = 10, height = 4, dpi = 600, units = "in")
 
 #### b. BD predictions ----
 ##### i. Issue match ----
@@ -1188,7 +1174,7 @@ distance_ame %>% median_hdi()
 bd_plots <- cowplot::plot_grid(plot_i_match, plot_geo, plot_dist, labels = "auto")
 bd_plots
 
-ggsave("3_plots/figure_8.png", bd_plots, width = 10, height = 6, dpi = 600, units = "in")
+#ggsave("3_plots/figure_8.png", bd_plots, width = 10, height = 6, dpi = 600, units = "in")
 
 # D. Supplemental Information ----
 ## 1. Additional Descriptive Information ----
@@ -1207,7 +1193,7 @@ ego_dist <- m_df %>%
   theme_minimal()
 ego_dist
 
-ggsave("3_plots/figure_a2a.png", ego_dist, width = 6, height = 4, dpi = 600, units = "in")
+#ggsave("3_plots/figure_a2a.png", ego_dist, width = 6, height = 4, dpi = 600, units = "in")
 
 alter_dist <- m_df %>%
   filter(dv == 1) %>%
@@ -1222,7 +1208,7 @@ alter_dist <- m_df %>%
   ylab("Frequency") + 
   theme_minimal()
 alter_dist
-ggsave("3_plots/figure_a2b.png", alter_dist, width = 6, height = 4, dpi = 600, units = "in")
+#ggsave("3_plots/figure_a2b.png", alter_dist, width = 6, height = 4, dpi = 600, units = "in")
 
 org_distributions <- cowplot::plot_grid(ego_dist, alter_dist, labels = "auto")
 
@@ -1296,7 +1282,7 @@ contrast_ejfactor <- coefs_cat %>%
 
 contrast_ejfactor
 
-ggsave("3_plots/figure_a1.png", contrast_ejfactor, width = 10, height = 6, dpi = 600, units = "in")
+#ggsave("3_plots/figure_a1.png", contrast_ejfactor, width = 10, height = 6, dpi = 600, units = "in")
 
 ### c. Loo Comparison Table ----
 loo(m_re)
@@ -1313,11 +1299,11 @@ sjPlot::tab_model(m_ego, m_ego_alter, m_full_ego, m_full_refined, dv.labels = c(
 ## 3. Model Diagnostics ----
 ### a. Posterior Predictive Check ----
 ppc <- pp_check(m_full_refined, type = "dens_overlay", ndraws = 100)
-#ggsave("3_plots/ppc.png", ppc, width = 6, height = 4, dpi = 600, units = "in")
+##ggsave("3_plots/ppc.png", ppc, width = 6, height = 4, dpi = 600, units = "in")
 
 ### b. Trace Plots ----
 trace <- plot(m_full_refined)
-#ggsave("3_plots/trace_plots.png", trace, width = 6, height = 4, dpi = 600, units = "in")
+##ggsave("3_plots/trace_plots.png", trace, width = 6, height = 4, dpi = 600, units = "in")
 
 ## 3. Prior Comparison ----
 loo(m_full_c)
@@ -1340,7 +1326,7 @@ coefs3 <- gather_coefs(m_rbcheck_reg_egos, "Regional Egos Only")
 combined_coefs_plot <- combine_coefs_plot3(coefs1, coefs2, coefs3)
 combined_coefs_plot
 
-ggsave("3_plots/figure_a3.png", combined_coefs_plot, width = 9, height = 9, dpi = 600, units = "in")
+#ggsave("3_plots/figure_a3.png", combined_coefs_plot, width = 9, height = 9, dpi = 600, units = "in")
 
 ### b. No ECJW Model Plot ----
 m_full_subset <- readRDS("2_outputs/m_full_subset.rds")
@@ -1350,5 +1336,5 @@ coefs2 <- gather_coefs(m_full_subset, "Full Model without EJCW")
 combined_coefs_plot2 <- combine_coefs_plot2(coefs1, coefs2)
 combined_coefs_plot2
 
-ggsave("3_plots/figure_a4.png", combined_coefs_plot2, width = 9, height = 9, dpi = 600, units = "in")
+#ggsave("3_plots/figure_a4.png", combined_coefs_plot2, width = 9, height = 9, dpi = 600, units = "in")
 

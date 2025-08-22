@@ -2,6 +2,7 @@
 /0_data/unanonymous_data
 /1_scripts/unanonymized_scripts
 /3_plots
+
 # History files
 .Rhistory
 .Rapp.history

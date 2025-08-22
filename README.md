@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The folders contain all replication files for the paper: Pozzi, Tara, Lubell, Mark, and Jessica Rudnick. 2025. *The Network Structure of Environmental Justice Social Movements: A Case Study in the California Delta.* American Journal of Political Science. [Submitted]
+The folders contain all replication files for the paper: Pozzi, Tara, Lubell, Mark, and Jessica Rudnick. 2025. *The Network Structure of Environmental Justice Social Movements: A Case Study in the California Delta.* American Journal of Political Science. https://doi.org/10.1080/08941920.2025.2534954
 
 ## Setup
 

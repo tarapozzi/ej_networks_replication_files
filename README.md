@@ -12,13 +12,31 @@ The analysis was performed on a macOS Monterey 12.0.1 using R-Version 4.4.0.
 
 ### R-packages
 
-The following R-packages (and versions) were used the analysis:
+The following R-packages were used the analysis:
 
 -   tidyverse
 
 -   brms
 
 -   tidbayes
+
+-   tidygeocoder
+
+-   sf
+
+-   tigris
+
+-   tmap
+
+-   tmaptools
+
+-   network
+
+-   ggraph
+
+-   sna
+
+-   emmeans
 
 ### Random Seeds
 
